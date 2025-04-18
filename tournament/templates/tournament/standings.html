@@ -1,0 +1,44 @@
+{% extends 'tournament/base.html' %}
+{% load humanize %}
+{% load static%}
+{% block title %}Standings{% endblock %}
+
+{% block content %}
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h3>League Standings</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Team</th>
+                            <th>Pld</th>
+                            <th>W</th>
+                            <th>L</th>
+                            <th>D</th>
+                            <th>Pts</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for team in standings %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>
+                                    <a href="{% url 'team_detail' team.id %}">{{ team.name }}</a>
+                                </td>
+                                <td>{{ team.total_matches }}</td>
+                                <td>{{ team.wins }}</td>
+                                <td>{{ team.losses }}</td>
+                                <td>{{ team.draws }}</td>
+                                <td><strong>{{ team.points }}</strong></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock %}

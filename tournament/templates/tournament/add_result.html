@@ -1,0 +1,28 @@
+{% extends 'tournament/base.html' %}
+
+{% load static%}
+
+{% block title %}Add Result for Match #{{ match.match_number }}{% endblock %}
+
+{% block content %}
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h3>Add Result for Match #{{ match.match_number }}</h3>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="id_result" class="form-label">Result</label>
+                    {{ form.result }}
+                </div>
+                <div class="mb-3">
+                    <label for="id_man_of_the_match" class="form-label">Man of the Match</label>
+                    {{ form.man_of_the_match }}
+                </div>
+                <button type="submit" class="btn btn-primary">Save Result</button>
+                <a href="{% url 'match_detail' match.id %}" class="btn btn-secondary">Cancel</a>
+            </form>
+        </div>
+    </div>
+{% endblock %}

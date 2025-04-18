@@ -1,0 +1,84 @@
+body {
+    background-color: #f8f9fa;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    margin-bottom: 20px;
+}
+
+.card-header {
+    font-weight: bold;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+.table th {
+    white-space: nowrap;
+}
+
+.img-thumbnail {
+    max-width: 100px;
+}
+
+.bg-primary {
+    background-color: #0d6efd !important;
+}
+
+.bg-success {
+    background-color: #198754 !important;
+}
+
+.bg-info {
+    background-color: #0dcaf0 !important;
+}
+
+.bg-warning {
+    background-color: #ffc107 !important;
+}
+
+.bg-danger {
+    background-color: #dc3545 !important;
+}
+
+.navbar-brand img {
+    margin-right: 10px;
+}
+
+footer {
+    margin-top: 50px;
+}
+
+.match-card {
+    transition: transform 0.2s;
+}
+
+.match-card:hover {
+    transform: scale(1.02);
+}
+
+.player-photo {
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.team-logo {
+    max-height: 100px;
+    max-width: 100%;
+}
+
+.stats-card {
+    border-left: 4px solid #0d6efd;
+}
+
+@media (max-width: 768px) {
+    .player-photo {
+        width: 100px;
+        height: 100px;
+    }
+}

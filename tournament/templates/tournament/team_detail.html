@@ -1,0 +1,138 @@
+{% extends 'tournament/base.html' %}
+{% load humanize %}
+{% load static%}
+{% block title %}{{ team.name }}{% endblock %}
+
+{% block content %}
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <div class="row">
+                <div class="col-md-8">
+                    <h3>{{ team.name }}</h3>
+                </div>
+                <div class="col-md-4 text-end">
+                    <span class="badge bg-light text-dark fs-6">
+                        Points: {{ team.points }} | W: {{ team.wins }} | L: {{ team.losses }} | D: {{ team.draws }}
+                    </span>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4 text-center">
+                    {% if team.logo %}
+                        <img src="{{ team.logo.url }}" alt="{{ team.name }} logo" class="img-fluid mb-3" style="max-height: 200px;">
+                    {% endif %}
+                    <table class="table table-bordered">
+                        <tr>
+                            <th>Home Ground</th>
+                            <td>{{ team.home_ground }}</td>
+                        </tr>
+                        <tr>
+                            <th>Coach</th>
+                            <td>{{ team.coach }}</td>
+                        </tr>
+                        <tr>
+                            <th>Captain</th>
+                            <td>
+                                {% if team.captain %}
+                                    <a href="{% url 'player_detail' team.captain.id %}">{{ team.captain.name }}</a>
+                                {% else %}
+                                    TBD
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Founded</th>
+                            <td>{{ team.founded }}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="col-md-8">
+                    <h4>Players</h4>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Role</th>
+                                    <th>Batting</th>
+                                    <th>Bowling</th>
+                                    <th>Age</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for player in players %}
+                                    <tr>
+                                        <td>
+                                            <a href="{% url 'player_detail' player.id %}">
+                                                {{ player.name }} #{{ player.jersey_number }}
+                                            </a>
+                                        </td>
+                                        <td>{{ player.role }}</td>
+                                        <td>{{ player.get_batting_style_display }}</td>
+                                        <td>{{ player.get_bowling_style_display }}</td>
+                                        <td>{{ player.age }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <h4>Upcoming Matches</h4>
+                    {% if upcoming_matches %}
+                        <ul class="list-group">
+                            {% for match in upcoming_matches %}
+                                <li class="list-group-item">
+                                    <a href="{% url 'match_detail' match.id %}">
+                                        vs {{ match.get_opponent_team.name }} at {{ match.venue }}
+                                    </a>
+                                    <br>
+                                    <small class="text-muted">
+                                        {{ match.date|date:"M d, Y H:i" }}
+                                    </small>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p>No upcoming matches scheduled.</p>
+                    {% endif %}
+                </div>
+                <div class="col-md-6">
+                    <h4>Recent Matches</h4>
+                    {% if past_matches %}
+                        <ul class="list-group">
+                            {% for match in past_matches|slice:":5" %}
+                                <li class="list-group-item">
+                                    <a href="{% url 'match_detail' match.id %}">
+                                        vs {{ match.get_opponent_team.name }}
+                                    </a>
+                                    <br>
+                                    <span class="fw-bold">
+                                        {% if match.winner == team %}
+                                            Won by {{ match.get_win_margin }}
+                                        {% elif match.result == 'Draw' %}
+                                            Match drawn
+                                        {% else %}
+                                            Lost by {{ match.get_win_margin }}
+                                        {% endif %}
+                                    </span>
+                                    <br>
+                                    <small class="text-muted">
+                                        {{ match.date|date:"M d, Y" }} at {{ match.venue }}
+                                    </small>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p>No recent matches to display.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

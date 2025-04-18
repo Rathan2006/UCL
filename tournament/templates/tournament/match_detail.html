@@ -1,0 +1,288 @@
+{% extends 'tournament/base.html' %}
+{% load humanize %}
+{% load static%}
+
+{% block title %}Match #{{ match.match_number }}{% endblock %}
+
+{% block scripts %}
+<script>
+    // Auto-refresh live scores every 10 seconds
+    function updateLiveScores() {
+        $.get("{% url 'get_live_score' match.id %}", function(data) {
+            $('#home-score').text(data.home_score);
+            $('#away-score').text(data.away_score);
+            $('#current-batsman').text(data.current_batsman);
+            $('#current-bowler').text(data.current_bowler);
+            $('#balls-remaining').text(data.balls_remaining);
+            $('#innings').text(data.innings);
+        });
+    }
+    
+    // Initial load
+    $(document).ready(function() {
+        {% if match.is_live %}
+            updateLiveScores();
+            setInterval(updateLiveScores, 10000);  // Update every 10 seconds
+            
+            // For admin score update
+            $('#score-update-form').submit(function(e) {
+                e.preventDefault();
+                $.post("{% url 'update_score_api' match.id %}", $(this).serialize(), function() {
+                    updateLiveScores();
+                });
+            });
+        {% endif %}
+    });
+</script>
+{% endblock %}
+
+{% block content %}
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h3>Match #{{ match.match_number }}: {{ match.home_team }} vs {{ match.away_team }}</h3>
+        </div>
+        <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-6 text-center">
+                    <h4>{{ match.home_team }}</h4>
+                    {% if match.home_team.logo %}
+                        <img src="{{ match.home_team.logo.url }}" alt="{{ match.home_team.name }} logo" class="img-fluid" style="max-height: 150px;">
+                    {% endif %}
+                </div>
+                <div class="col-md-6 text-center">
+                    <h4>{{ match.away_team }}</h4>
+                    {% if match.away_team.logo %}
+                        <img src="{{ match.away_team.logo.url }}" alt="{{ match.away_team.name }} logo" class="img-fluid" style="max-height: 150px;">
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <table class="table table-bordered">
+                        <tr>
+                            <th width="30%">Date & Time</th>
+                            <td>{{ match.date|date:"M d, Y H:i" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Venue</th>
+                            <td>{{ match.venue }}</td>
+                        </tr>
+                        <tr>
+                            <th>Toss</th>
+                            <td>
+                                {% if match.toss_winner %}
+                                    {{ match.toss_winner }} won the toss and chose to {{ match.toss_decision }}
+                                {% else %}
+                                    TBD
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Umpires</th>
+                            <td>{{ match.umpires }}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <table class="table table-bordered">
+                        <tr>
+                            <th width="30%">Status</th>
+                            <td>
+                                {% if match.is_completed %}
+                                    <span class="badge bg-success">Completed</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">Upcoming</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Result</th>
+                            <td>
+                                {% if match.result == 'Home Win' %}
+                                    {{ match.home_team }} won
+                                {% elif match.result == 'Away Win' %}
+                                    {{ match.away_team }} won
+                                {% elif match.result == 'Draw' %}
+                                    Match drawn
+                                {% elif match.result == 'No Result' %}
+                                    No result
+                                {% else %}
+                                    To be determined
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Man of the Match</th>
+                            <td>
+                                {% if match.man_of_the_match %}
+                                    <a href="{% url 'player_detail' match.man_of_the_match.id %}">
+                                        {{ match.man_of_the_match.name }}
+                                    </a>
+                                {% else %}
+                                    TBD
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            
+            {% if match.is_completed %}
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <h4>Batting Performances</h4>
+                        {% if batting_performances %}
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Player</th>
+                                            <th>Runs</th>
+                                            <th>Balls</th>
+                                            <th>SR</th>
+                                            <th>4s/6s</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for performance in batting_performances %}
+                                            <tr>
+                                                <td>
+                                                    <a href="{% url 'player_detail' performance.player.id %}">
+                                                        {{ performance.player.name }}
+                                                    </a>
+                                                </td>
+                                                <td>{{ performance.runs }}{% if performance.not_out %}*{% endif %}</td>
+                                                <td>{{ performance.balls_faced }}</td>
+                                                <td>{{ performance.strike_rate }}</td>
+                                                <td>{{ performance.fours }}/{{ performance.sixes }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <p>No batting performances recorded.</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <h4>Bowling Performances</h4>
+                        {% if bowling_performances %}
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Player</th>
+                                            <th>Overs</th>
+                                            <th>Wickets</th>
+                                            <th>Runs</th>
+                                            <th>Econ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for performance in bowling_performances %}
+                                            <tr>
+                                                <td>
+                                                    <a href="{% url 'player_detail' performance.player.id %}">
+                                                        {{ performance.player.name }}
+                                                    </a>
+                                                </td>
+                                                <td>{{ performance.overs }}</td>
+                                                <td>{{ performance.wickets }}</td>
+                                                <td>{{ performance.runs_conceded }}</td>
+                                                <td>{{ performance.economy }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <p>No bowling performances recorded.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+            
+            {% if user.is_authenticated and not match.is_completed %}
+                <div class="text-center mt-4">
+                    <a href="{% url 'add_result' match.id %}" class="btn btn-primary">Add Match Result</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
+<div class="card mb-4">
+    <div class="card-header bg-danger text-white">
+        <h3>Live Score</h3>
+    </div>
+    <div class="card-body">
+        <div class="row text-center">
+            <div class="col-md-5">
+                <h4>{{ match.home_team }}</h4>
+                <h2 id="home-score">{{ match.home_score }}</h2>
+            </div>
+            <div class="col-md-2">
+                <h4>vs</h4>
+            </div>
+            <div class="col-md-5">
+                <h4>{{ match.away_team }}</h4>
+                <h2 id="away-score">{{ match.away_score }}</h2>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <p><strong>Current Batsman:</strong> <span id="current-batsman">{{ match.current_batsman|default:"-" }}</span></p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>Current Bowler:</strong> <span id="current-bowler">{{ match.current_bowler|default:"-" }}</span></p>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <p><strong>Balls Remaining:</strong> <span id="balls-remaining">{{ match.balls_remaining }}</span></p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>Innings:</strong> <span id="innings">{{ match.innings }}</span></p>
+            </div>
+        </div>
+        
+        {% if user.is_staff and match.is_live %}
+        <div class="mt-4">
+            <h4>Update Score</h4>
+            <form id="score-update-form">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-4">
+                        <label>Home Score</label>
+                        <input type="number" name="home_score" class="form-control" value="{{ match.home_score }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label>Away Score</label>
+                        <input type="number" name="away_score" class="form-control" value="{{ match.away_score }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label>Balls Remaining</label>
+                        <input type="number" name="balls_remaining" class="form-control" value="{{ match.balls_remaining }}">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary mt-3">Update</button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+<script>
+    // Pass the match ID to the script
+    document.currentScript = document.currentScript || {};
+    document.currentScript.setAttribute('data-match-id', '{{ match.id }}');
+</script>
+<script src="{% static 'tournament/js/script.js' %}"></script>
+{% if user.is_staff or user.is_superuser %}
+<div class="mt-3">
+    <a href="{% url 'update_live_score' match.id %}" class="btn btn-warning">
+        Update Live Score
+    </a>
+</div>
+{% endif %}

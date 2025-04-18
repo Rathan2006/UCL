@@ -1,0 +1,99 @@
+{% extends 'tournament/base.html' %}
+{% load humanize %}
+{% load static%}
+
+{% block title %}Matches{% endblock %}
+
+{% block content %}
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <ul class="nav nav-tabs card-header-tabs">
+                <li class="nav-item">
+                    <a class="nav-link {% if not past %}active{% endif %}" href="?past=0">Upcoming</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if past %}active{% endif %}" href="?past=1">Past</a>
+                </li>
+            </ul>
+        </div>
+        <div class="card-body">
+            {% if past %}
+                <h3>Past Matches</h3>
+                {% if past_matches %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Match</th>
+                                    <th>Teams</th>
+                                    <th>Result</th>
+                                    <th>Date</th>
+                                    <th>Venue</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for match in past_matches %}
+                                    <tr>
+                                        <td>#{{ match.match_number }}</td>
+                                        <td>
+                                            <a href="{% url 'match_detail' match.id %}">
+                                                {{ match.home_team }} vs {{ match.away_team }}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            {% if match.result == 'Home Win' %}
+                                                {{ match.home_team }} won
+                                            {% elif match.result == 'Away Win' %}
+                                                {{ match.away_team }} won
+                                            {% elif match.result == 'Draw' %}
+                                                Match drawn
+                                            {% else %}
+                                                {{ match.result }}
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ match.date|date:"M d, Y" }}</td>
+                                        <td>{{ match.venue }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p>No past matches to display.</p>
+                {% endif %}
+            {% else %}
+                <h3>Upcoming Matches</h3>
+                {% if upcoming_matches %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Match</th>
+                                    <th>Teams</th>
+                                    <th>Date & Time</th>
+                                    <th>Venue</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for match in upcoming_matches %}
+                                    <tr>
+                                        <td>#{{ match.match_number }}</td>
+                                        <td>
+                                            <a href="{% url 'match_detail' match.id %}">
+                                                {{ match.home_team }} vs {{ match.away_team }}
+                                            </a>
+                                        </td>
+                                        <td>{{ match.date|date:"M d, Y H:i" }}</td>
+                                        <td>{{ match.venue }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p>No upcoming matches scheduled.</p>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends 'tournament/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Update Live Score: {{ match.home_team }} vs {{ match.away_team }}</h2>
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>Current Score: {{ match.home_score }}/{{ match.away_score }}</h3>
+            <p>Overs: {{ match.current_over }}.{{ match.current_ball }}</p>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="runs" class="form-label">Runs scored this ball:</label>
+                    <input type="number" class="form-control" id="runs" name="runs" min="0" max="6" value="0">
+                </div>
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="is_wicket" name="is_wicket">
+                    <label class="form-check-label" for="is_wicket">Wicket?</label>
+                </div>
+                <button type="submit" class="btn btn-primary">Update Score</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
