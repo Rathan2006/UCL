@@ -1,115 +1,205 @@
-{% load static%}
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ultimate Cricket League - {% block title %}{% endblock %}</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="{% static 'tournament/css/style.css' %}">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ultimate Cricket League - {% block title %}{% endblock %}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="{% static 'tournament/css/style.css' %}">
+
+  <style>
+    /* Navbar Enhancements */
+    .navbar-nav .nav-link {
+      color: white !important;
+      padding: 10px 15px;
+      transition: all 0.3s ease;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+    }
+
+    .navbar-nav .nav-link:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+      color: #f8f9fa !important;
+      border-radius: 5px;
+      transform: scale(1.05);
+    }
+
+    .navbar-brand {
+      font-weight: bold;
+      font-size: 1.3rem;
+      transition: transform 0.3s ease;
+      display: flex;
+      align-items: center;
+      transition: transform 0.3s, opacity 0.3s ease;
+    }
+
+    .navbar-brand:hover {
+      transform: scale(1.1); /* Slightly increase size when hovered */
+      opacity: 1.1; /* Make it pop slightly */
+    }
+
+    .navbar-brand img {
+      height: 50px; /* Increased logo size */
+      width: auto;
+      margin-right: 10px;
+      transition: all 0.3s ease;
+    }
+
+    .navbar-brand:hover img {
+      transform: scale(1.1); /* Slightly increase the logo size */
+      opacity: 0.9; /* Make the logo pop slightly */
+    }
+
+    .navbar-text {
+      color: #ffffff;
+    }
+
+    /* Footer Enhancements */
+    footer {
+      background-color: #212529;
+      color: #ffffff;
+      padding-top: 40px;
+    }
+
+    footer h5 {
+      font-weight: bold;
+      margin-bottom: 15px;
+    }
+
+    footer a {
+      color: #adb5bd;
+      text-decoration: none;
+      transition: color 0.3s;
+    }
+
+    footer a:hover {
+      color: #ffffff;
+      text-decoration: underline;
+    }
+
+    footer p {
+      margin: 0;
+      font-size: 0.95rem;
+    }
+
+    .footer-bottom {
+      border-top: 1px solid #3a3b3c;
+      margin-top: 20px;
+      padding-top: 10px;
+      font-size: 0.85rem;
+    }
+
+    .social-icons a {
+      color: #adb5bd;
+      margin-right: 10px;
+      transition: color 0.3s;
+    }
+
+    .social-icons a:hover {
+      color: #ffffff;
+    }
+
+    @media (max-width: 768px) {
+      .navbar-brand img {
+        height: 45px; /* smaller logo on mobile */
+      }
+      .navbar-nav .nav-link {
+        padding: 8px 10px;
+        font-size: 0.95rem;
+      }
+      footer {
+        text-align: center;
+      }
+      .social-icons {
+        justify-content: center;
+        margin-top: 10px;
+      }
+      .navbar-brand-text {
+        transition: all 0.3s ease;
+      }
+
+      .navbar-brand:hover .navbar-brand-text {
+        transform: scale(1.1); /* Slightly enlarge the brand name */
+        opacity: 1.1;
+      }
+
+    }
+  </style>
 </head>
-<body>
-    <div class="navbar-nav ms-auto">
-        {% if user.is_authenticated %}
-            <div class="dropdown">
-                <button class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown">
-                    <i class="fas fa-user-circle"></i> {{ user.username }}
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end">
-                    <li><a class="dropdown-item" href="{% url 'dashboard' %}">Dashboard</a></li>
-                    <li><a class="dropdown-item" href="{% url 'add_team' %}">Create Team</a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li>
-                        <form action="{% url 'logout' %}" method="post" class="d-inline">
-                            {% csrf_token %}
-                            <button type="submit" class="dropdown-item">Logout</button>
-                        </form>
-                    </li>
-                </ul>
-                {% if user.is_authenticated %}
-                    <span class="badge bg-success">Member</span>
-                {% else %}
-                    <span class="badge bg-warning text-dark">Guest</span>
-                {% endif %}
-            </div>
-        {% else %}
+<body style="background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container">
+        <a class="navbar-brand" href="{% url 'index' %}">
+            <img src="{% static 'tournament/images/new_logo.png' %}" alt="UCL Logo">
+            <span class="navbar-brand-text">Ultimate Cricket League</span>
+          </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item"><a class="nav-link" href="{% url 'teams' %}">Teams</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'players' %}">Players</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'matches' %}">Matches</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'standings' %}">Standings</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'player_stats' %}">Stats</a></li>
+        </ul>
+        <div class="d-flex">
+          {% if user.is_authenticated %}
+            <span class="navbar-text me-3">Welcome, {{ user.username }}</span>
+            <a href="{% url 'logout' %}" class="btn btn-outline-light">Logout</a>
+          {% else %}
             <a href="{% url 'login' %}" class="btn btn-outline-light me-2">Login</a>
-            <a href="{% url 'register' %}" class="btn btn-primary">Register</a>
-        {% endif %}
+            <a href="{% url 'register' %}" class="btn btn-outline-light">Register</a>
+          {% endif %}
+        </div>
+      </div>
     </div>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="{% url 'index' %}">
-                <img src="{% static 'tournament/images/logo.png' %}" alt="UCL Logo" height="40">
-                Ultimate Cricket League
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'teams' %}">Teams</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'players' %}">Players</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'matches' %}">Matches</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'standings' %}">Standings</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'player_stats' %}">Stats</a>
-                    </li>
-                </ul>
-                <div class="d-flex">
-                    {% if user.is_authenticated %}
-                        <span class="navbar-text me-3">Welcome, {{ user.username }}</span>
-                        <a href="{% url 'logout' %}" class="btn btn-outline-light">Logout</a>
-                    {% else %}
-                        <a href="{% url 'login' %}" class="btn btn-outline-light me-2">Login</a>
-                        <a href="{% url 'register' %}" class="btn btn-outline-light">Register</a>
-                    {% endif %}
-                </div>
-            </div>
+  </nav>
+
+  <main class="container my-4">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="pt-5">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-4 mb-4">
+          <h5>About UCL</h5>
+          <p>The Ultimate Cricket League (UCL) is a dynamic cricket tournament bringing together top teams and legendary players from across the globe. Witness cricket at its finest!</p>
         </div>
-    </nav>
-
-    <main class="container my-4">
-        {% block content %}{% endblock %}
-    </main>
-
-    <footer class="bg-dark text-white py-4 mt-5">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-6">
-                    <h5>Ultimate Cricket League</h5>
-                    <p>The premier cricket tournament featuring the best teams and players from around the world.</p>
-                </div>
-                <div class="col-md-3">
-                    <h5>Quick Links</h5>
-                    <ul class="list-unstyled">
-                        <li><a href="{% url 'teams' %}" class="text-white">Teams</a></li>
-                        <li><a href="{% url 'players' %}" class="text-white">Players</a></li>
-                        <li><a href="{% url 'matches' %}" class="text-white">Matches</a></li>
-                    </ul>
-                </div>
-                <div class="col-md-3">
-                    <h5>Contact</h5>
-                    <p>Email: info@ucl.com<br>Phone: +1 234 567 8900</p>
-                </div>
-            </div>
-            <div class="text-center mt-3">
-                <p>&copy; {% now "Y" %} Ultimate Cricket League. All rights reserved.</p>
-            </div>
+        <div class="col-md-4 mb-4">
+          <h5>Organizers</h5>
+          <p>Managed by Global Sports Enterprises Ltd.<br>Dedicated to promoting cricket worldwide with passion and integrity.</p>
+          <div class="social-icons mt-2">
+            <a href="#"><i class="bi bi-facebook"></i></a>
+            <a href="#"><i class="bi bi-twitter"></i></a>
+            <a href="#"><i class="bi bi-instagram"></i></a>
+            <a href="#"><i class="bi bi-youtube"></i></a>
+          </div>
         </div>
-    </footer>
+        <div class="col-md-4 mb-4">
+          <h5>Designed & Developed by</h5>
+          <p>UCL WebTech Team<br>Leading Digital Solutions for Sports Entertainment.</p>
+          <ul class="list-unstyled">
+            <li><a href="#">Meet Our Team</a></li>
+            <li><a href="#">Career Opportunities</a></li>
+            <li><a href="#">Contact Web Support</a></li>
+          </ul>
+        </div>
+      </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{% static 'tournament/js/script.js' %}"></script>
-    {% block scripts %}{% endblock %}
+      <div class="text-center footer-bottom">
+        <p>&copy; {% now "Y" %} Ultimate Cricket League. All rights reserved. | Made with ❤️ for Cricket Fans Worldwide.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="{% static 'tournament/js/script.js' %}"></script>
+  {% block scripts %}{% endblock %}
 </body>
 </html>

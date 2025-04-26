@@ -8,8 +8,8 @@ from django.contrib.auth import login,logout
 from django.http import JsonResponse
 from django import forms
 from django import template
-from django.db.models import Q
-
+from django.db.models import Q,F
+from django.db.models import Count, Case, When, IntegerField
 
 def index(request):
     upcoming_matches = Match.objects.filter(date__gte=timezone.now()).order_by('date')[:5]
@@ -63,9 +63,9 @@ def match_list(request):
     })
 
 def match_detail(request, match_id):
-    match = get_object_or_404(Match, pk=match_id)
-    batting_performances = match.batting_performances.all().order_by('-runs')
-    bowling_performances = match.bowling_performances.all().order_by('-wickets')
+    match = get_object_or_404(Match, id=match_id)
+    batting_performances = BattingPerformance.objects.filter(match=match).select_related('player')
+    bowling_performances = BowlingPerformance.objects.filter(match=match).select_related('player')
     
     context = {
         'match': match,
@@ -74,10 +74,17 @@ def match_detail(request, match_id):
     }
     return render(request, 'tournament/match_detail.html', context)
 
+# views.py
+from django.db.models import Count, Case, When, IntegerField, Sum
+
 def standings(request):
-    teams = Team.objects.all()
-    standings = sorted(teams, key=lambda x: (-x.points, -x.wins, -x.draws))
-    return render(request, 'tournament/standings.html', {'standings': standings})
+    # First update all team stats
+    for team in Team.objects.all():
+        team.update_stats()
+    
+    # Get teams ordered by points and wins
+    teams = Team.objects.all().order_by('-points', '-wins')
+    return render(request, 'tournament/standings.html', {'standings': teams})
 
 @login_required
 def add_result(request, match_id):

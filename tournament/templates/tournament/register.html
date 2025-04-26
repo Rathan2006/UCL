@@ -1,19 +1,39 @@
 {% extends 'tournament/base.html' %}
 
+{% block title %}Register{% endblock %}
+
 {% block content %}
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h3>Register</h3>
+<div class="container my-5">
+    <div class="row justify-content-center align-items-center min-vh-80">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-lg border-0 rounded-4">
+                <div class="card-header bg-success text-white text-center rounded-top-4">
+                    <h3 class="mb-0">Create Your Account</h3>
+                    <p class="small mt-1">Join the Ultimate Cricket League</p>
                 </div>
-                <div class="card-body">
-                    <form method="post">
+                <div class="card-body p-4">
+                    <form method="post" novalidate>
                         {% csrf_token %}
-                        {{ form.as_p }}
-                        <button type="submit" class="btn btn-primary">Register</button>
+                        {% for field in form %}
+                            <div class="mb-3">
+                                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.errors %}
+                                    <div class="text-danger small">
+                                        {{ field.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success btn-lg shadow-sm" style="transition: transform 0.2s;">
+                                Register
+                            </button>
+                        </div>
                     </form>
+                </div>
+                <div class="card-footer text-center py-3">
+                    <small>Already have an account? <a href="{% url 'login' %}">Login here</a></small>
                 </div>
             </div>
         </div>

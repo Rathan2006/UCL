@@ -1,45 +1,56 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.db.models import Count, Q
+
 
 class Team(models.Model):
     name = models.CharField(max_length=100, unique=True)
+    short_name = models.CharField(max_length=3, blank=True) 
     logo = models.ImageField(upload_to='team_logos/', null=True, blank=True)
     home_ground = models.CharField(max_length=100)
     captain = models.ForeignKey('Player', on_delete=models.SET_NULL, null=True, blank=True, related_name='captain_of')
     coach = models.CharField(max_length=100)
     founded = models.PositiveIntegerField()
     public = models.BooleanField(default=True) 
-    manager = models.ForeignKey(User, on_delete=models.CASCADE, related_name='managed_teams', null=True, blank=True)  
-      
+    manager = models.ForeignKey(User, on_delete=models.CASCADE, related_name='managed_teams', null=True, blank=True)
+    
+    # Stats fields
+    matches_played = models.PositiveIntegerField(default=0)
+    wins = models.PositiveIntegerField(default=0)
+    losses = models.PositiveIntegerField(default=0)
+    draws = models.PositiveIntegerField(default=0)
+    points = models.PositiveIntegerField(default=0)  # Added concrete points field
+    
     def __str__(self):
         return self.name
-    
     @property
     def total_matches(self):
-        return self.home_matches.count() + self.away_matches.count()
+        """Count all completed matches for this team"""
+        return Match.objects.filter(
+            (Q(home_team=self) | Q(away_team=self)),
+            status='COMPLETED'
+        ).count()
     
-    @property
-    def wins(self):
-        return self.home_matches.filter(result='Home Win').count() + self.away_matches.filter(result='Away Win').count()
-    
-    @property
-    def losses(self):
-        return self.home_matches.filter(result='Away Win').count() + self.away_matches.filter(result='Home Win').count()
-    
-    @property
-    def draws(self):
-        return self.home_matches.filter(result='Draw').count() + self.away_matches.filter(result='Draw').count()
-    
-    @property
-    def points(self):
-        return (self.wins * 2) + (self.draws * 1)
-
-    def get_opponent_team(self, match):
-        if match.home_team == self:
-            return match.away_team
-        return match.home_team
-
+    def update_stats(self):
+        """Update all statistics including matches played"""
+        completed_matches = Match.objects.filter(
+            Q(home_team=self) | Q(away_team=self),
+            status='COMPLETED'
+        )
+        
+        self.matches_played = completed_matches.count()  # This will now work
+        self.wins = completed_matches.filter(
+            Q(home_team=self, result='Home Win') | 
+            Q(away_team=self, result='Away Win')
+        ).count()
+        self.losses = completed_matches.filter(
+            Q(home_team=self, result='Away Win') | 
+            Q(away_team=self, result='Home Win')
+        ).count()
+        self.draws = completed_matches.filter(result='Draw').count()
+        self.points = (self.wins * 3) + (self.draws * 1)
+        self.save()
 
 class Player(models.Model):
     BATTING_STYLE = [
@@ -129,7 +140,11 @@ class Match(models.Model):
         ('No Result', 'No Result'),
         ('TBD', 'To Be Determined'),
     ]
-    
+    STATUS_CHOICES = [
+        ('UPCOMING', 'Upcoming'),
+        ('COMPLETED', 'Completed'),
+    ]
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='UPCOMING')
     home_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='home_matches')
     away_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='away_matches')
     date = models.DateTimeField()
