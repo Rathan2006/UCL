@@ -1,0 +1,128 @@
+{% extends 'tournament/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-4 text-center">
+            {% if player.photo %}
+                <img src="{{ player.photo.url }}" alt="{{ player.name }}" class="img-fluid rounded-circle mb-3" style="max-height: 200px;">
+            {% endif %}
+            <h3>{{ player.name }}</h3>
+            <h5>#{{ player.jersey_number }} | {{ player.team.name }}</h5>
+            <p>
+                <strong>Role:</strong> {{ player.role }}<br>
+                <strong>Batting:</strong> {{ player.get_batting_style_display }}<br>
+                <strong>Bowling:</strong> {{ player.get_bowling_style_display }}
+            </p>
+        </div>
+        
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h4>Batting Statistics</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Matches:</strong> {{ player.total_matches }}</p>
+                            <p><strong>Runs:</strong> {{ player.total_runs }}</p>
+                            <p><strong>Highest Score:</strong> {{ player.highest_score }}</p>
+                            <p><strong>Fours:</strong> {{ player.total_fours }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Sixes:</strong> {{ player.total_sixes }}</p>
+                            <p><strong>Average:</strong> {{ player.batting_average }}</p>
+                            <p><strong>Strike Rate:</strong> {{ player.strike_rate }}</p>
+                            <p><strong>50s/100s:</strong> {{ player.fifties }}/{{ player.centuries }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h4>Bowling Statistics</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Wickets:</strong> {{ player.total_wickets }}</p>
+                            <p><strong>Best Bowling:</strong> {{ player.best_bowling_wickets }}/{{ player.best_bowling_runs }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Average:</strong> {{ player.bowling_average }}</p>
+                            <p><strong>Economy:</strong> {{ player.economy_rate }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <h5>Recent Batting Performances</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Match</th>
+                                        <th>Runs</th>
+                                        <th>Balls</th>
+                                        <th>SR</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for performance in recent_batting %}
+                                    <tr>
+                                        <td>vs {{ performance.match.get_opponent_team.name }}</td>
+                                        <td>{{ performance.runs }}</td>
+                                        <td>{{ performance.balls_faced }}</td>
+                                        <td>{{ performance.strike_rate }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr><td colspan="4">No recent batting performances</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-warning text-dark">
+                            <h5>Recent Bowling Performances</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Match</th>
+                                        <th>Wkts</th>
+                                        <th>Runs</th>
+                                        <th>Econ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for performance in recent_bowling %}
+                                    <tr>
+                                        <td>vs {{ performance.match.get_opponent_team.name }}</td>
+                                        <td>{{ performance.wickets }}</td>
+                                        <td>{{ performance.runs_conceded }}</td>
+                                        <td>{{ performance.economy }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr><td colspan="4">No recent bowling performances</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

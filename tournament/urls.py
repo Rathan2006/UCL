@@ -19,4 +19,6 @@ urlpatterns = [
     path('api/matches/<int:match_id>/update/', views.update_score_api, name='update_score_api'),
     path('matches/<int:match_id>/live/update/', views.update_live_score, name='update_live_score'),
     path('accounts/logout/', views.custom_logout, name='logout'),
-]
+    path('dashboard/', views.dashboard, name='dashboard'),
+    path('player_stats/', views.player_stats, name='player_stats'),
+    ]

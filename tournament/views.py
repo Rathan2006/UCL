@@ -7,6 +7,8 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login,logout
 from django.http import JsonResponse
 from django import forms
+from django import template
+from django.db.models import Q
 
 
 def index(request):
@@ -188,3 +190,40 @@ def update_live_score(request, match_id):
 def custom_logout(request):
     logout(request)
     return redirect('index')  # Redirect to your homepage
+
+
+@login_required
+def dashboard(request):
+    user_teams = Team.objects.filter(manager=request.user)
+    context = {
+        'user_teams': user_teams,
+    }
+    return render(request, 'tournament/dashboard.html', context)
+
+def team_list(request):
+    if request.user.is_authenticated:
+        teams = Team.objects.all()
+    else:
+        teams = Team.objects.filter(manager__isnull=True)
+    
+    return render(request, 'tournament/teams.html', {'teams': teams})
+
+
+@login_required
+def profile(request):
+    if request.method == 'POST':
+        form = UserProfileForm(request.POST, instance=request.user)
+        if form.is_valid():
+            form.save()
+            return redirect('profile')
+    else:
+        form = UserProfileForm(instance=request.user)
+    return render(request, 'tournament/profile.html', {'form': form})
+
+
+@login_required
+def player_stats(request):
+    return render(request, 'tournament/player_stats.html', {
+        'batting_performances': BattingPerformance.objects.all(),
+        'bowling_performances': BowlingPerformance.objects.all(),
+    })

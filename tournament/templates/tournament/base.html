@@ -10,6 +10,34 @@
     <link rel="stylesheet" href="{% static 'tournament/css/style.css' %}">
 </head>
 <body>
+    <div class="navbar-nav ms-auto">
+        {% if user.is_authenticated %}
+            <div class="dropdown">
+                <button class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="fas fa-user-circle"></i> {{ user.username }}
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="{% url 'dashboard' %}">Dashboard</a></li>
+                    <li><a class="dropdown-item" href="{% url 'add_team' %}">Create Team</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <form action="{% url 'logout' %}" method="post" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="dropdown-item">Logout</button>
+                        </form>
+                    </li>
+                </ul>
+                {% if user.is_authenticated %}
+                    <span class="badge bg-success">Member</span>
+                {% else %}
+                    <span class="badge bg-warning text-dark">Guest</span>
+                {% endif %}
+            </div>
+        {% else %}
+            <a href="{% url 'login' %}" class="btn btn-outline-light me-2">Login</a>
+            <a href="{% url 'register' %}" class="btn btn-primary">Register</a>
+        {% endif %}
+    </div>
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
             <a class="navbar-brand" href="{% url 'index' %}">
@@ -32,6 +60,9 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'standings' %}">Standings</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'player_stats' %}">Stats</a>
                     </li>
                 </ul>
                 <div class="d-flex">

@@ -9,7 +9,9 @@ class Team(models.Model):
     captain = models.ForeignKey('Player', on_delete=models.SET_NULL, null=True, blank=True, related_name='captain_of')
     coach = models.CharField(max_length=100)
     founded = models.PositiveIntegerField()
-    
+    public = models.BooleanField(default=True) 
+    manager = models.ForeignKey(User, on_delete=models.CASCADE, related_name='managed_teams', null=True, blank=True)  
+      
     def __str__(self):
         return self.name
     
@@ -61,6 +63,51 @@ class Player(models.Model):
     role = models.CharField(max_length=50)
     photo = models.ImageField(upload_to='player_photos/', null=True, blank=True)
     jersey_number = models.PositiveIntegerField()
+    # Batting Stats
+    total_runs = models.PositiveIntegerField(default=0)
+    total_balls_faced = models.PositiveIntegerField(default=0)
+    total_fours = models.PositiveIntegerField(default=0)
+    total_sixes = models.PositiveIntegerField(default=0)
+    highest_score = models.PositiveIntegerField(default=0)
+    fifties = models.PositiveIntegerField(default=0)
+    centuries = models.PositiveIntegerField(default=0)
+    
+    # Bowling Stats
+    total_wickets = models.PositiveIntegerField(default=0)
+    total_overs_bowled = models.DecimalField(max_digits=5, decimal_places=1, default=0)
+    total_runs_conceded = models.PositiveIntegerField(default=0)
+    best_bowling_wickets = models.PositiveIntegerField(default=0)
+    best_bowling_runs = models.PositiveIntegerField(default=0)
+    
+    # Fielding Stats
+    total_catches = models.PositiveIntegerField(default=0)
+    total_stumpings = models.PositiveIntegerField(default=0)
+    total_run_outs = models.PositiveIntegerField(default=0)
+    
+    # Calculated properties
+    @property
+    def batting_average(self):
+        if self.total_matches > 0 and self.total_runs > 0:
+            return round(self.total_runs / self.total_matches, 2)
+        return 0.0
+    
+    @property
+    def strike_rate(self):
+        if self.total_balls_faced > 0:
+            return round((self.total_runs / self.total_balls_faced) * 100, 2)
+        return 0.0
+    
+    @property
+    def bowling_average(self):
+        if self.total_wickets > 0:
+            return round(self.total_runs_conceded / self.total_wickets, 2)
+        return 0.0
+    
+    @property
+    def economy_rate(self):
+        if self.total_overs_bowled > 0:
+            return round(self.total_runs_conceded / float(self.total_overs_bowled), 2)
+        return 0.0
     
     def __str__(self):
         return f"{self.name} ({self.team})"
@@ -129,15 +176,12 @@ class Match(models.Model):
 
 class BattingPerformance(models.Model):
     player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name='batting_performances')
-    match = models.ForeignKey(Match, on_delete=models.CASCADE, related_name='batting_performances')
+    match = models.ForeignKey(Match, on_delete=models.CASCADE)
     runs = models.PositiveIntegerField(default=0)
     balls_faced = models.PositiveIntegerField(default=0)
     fours = models.PositiveIntegerField(default=0)
     sixes = models.PositiveIntegerField(default=0)
     not_out = models.BooleanField(default=False)
-    
-    class Meta:
-        unique_together = ('player', 'match')
     
     @property
     def strike_rate(self):
@@ -148,19 +192,28 @@ class BattingPerformance(models.Model):
 
 class BowlingPerformance(models.Model):
     player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name='bowling_performances')
-    match = models.ForeignKey(Match, on_delete=models.CASCADE, related_name='bowling_performances')
+    match = models.ForeignKey(Match, on_delete=models.CASCADE)
     overs = models.DecimalField(max_digits=3, decimal_places=1, default=0)
     maidens = models.PositiveIntegerField(default=0)
     runs_conceded = models.PositiveIntegerField(default=0)
     wickets = models.PositiveIntegerField(default=0)
-    wides = models.PositiveIntegerField(default=0)
-    no_balls = models.PositiveIntegerField(default=0)
-    
-    class Meta:
-        unique_together = ('player', 'match')
     
     @property
     def economy(self):
         if self.overs > 0:
             return round(self.runs_conceded / float(self.overs), 2)
         return 0.0
+
+class Message(models.Model):
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_messages')
+    subject = models.CharField(max_length=100)
+    body = models.TextField()
+    sent_at = models.DateTimeField(auto_now_add=True)
+    read = models.BooleanField(default=False)
+
+class Favorite(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    team = models.ForeignKey(Team, on_delete=models.CASCADE, null=True, blank=True)
+    player = models.ForeignKey(Player, on_delete=models.CASCADE, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
