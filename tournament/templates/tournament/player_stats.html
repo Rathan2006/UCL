@@ -1,127 +1,101 @@
 {% extends 'tournament/base.html' %}
+{% load static %}
 
 {% block content %}
 <div class="container mt-4">
-    <div class="row">
-        <div class="col-md-4 text-center">
-            {% if player.photo %}
-                <img src="{{ player.photo.url }}" alt="{{ player.name }}" class="img-fluid rounded-circle mb-3" style="max-height: 200px;">
-            {% endif %}
-            <h3>{{ player.name }}</h3>
-            <h5>#{{ player.jersey_number }} | {{ player.team.name }}</h5>
-            <p>
-                <strong>Role:</strong> {{ player.role }}<br>
-                <strong>Batting:</strong> {{ player.get_batting_style_display }}<br>
-                <strong>Bowling:</strong> {{ player.get_bowling_style_display }}
-            </p>
+    <h2 class="text-center mb-4">🏏 Player Statistics</h2>
+
+    <!-- Batting Statistics Section -->
+    <div class="card mb-5 shadow">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">Top Batters</h4>
         </div>
-        
-        <div class="col-md-8">
-            <div class="card mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h4>Batting Statistics</h4>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p><strong>Matches:</strong> {{ player.total_matches }}</p>
-                            <p><strong>Runs:</strong> {{ player.total_runs }}</p>
-                            <p><strong>Highest Score:</strong> {{ player.highest_score }}</p>
-                            <p><strong>Fours:</strong> {{ player.total_fours }}</p>
-                        </div>
-                        <div class="col-md-6">
-                            <p><strong>Sixes:</strong> {{ player.total_sixes }}</p>
-                            <p><strong>Average:</strong> {{ player.batting_average }}</p>
-                            <p><strong>Strike Rate:</strong> {{ player.strike_rate }}</p>
-                            <p><strong>50s/100s:</strong> {{ player.fifties }}/{{ player.centuries }}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="card mb-4">
-                <div class="card-header bg-success text-white">
-                    <h4>Bowling Statistics</h4>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p><strong>Wickets:</strong> {{ player.total_wickets }}</p>
-                            <p><strong>Best Bowling:</strong> {{ player.best_bowling_wickets }}/{{ player.best_bowling_runs }}</p>
-                        </div>
-                        <div class="col-md-6">
-                            <p><strong>Average:</strong> {{ player.bowling_average }}</p>
-                            <p><strong>Economy:</strong> {{ player.economy_rate }}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header bg-info text-white">
-                            <h5>Recent Batting Performances</h5>
-                        </div>
-                        <div class="card-body">
-                            <table class="table table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Match</th>
-                                        <th>Runs</th>
-                                        <th>Balls</th>
-                                        <th>SR</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for performance in recent_batting %}
-                                    <tr>
-                                        <td>vs {{ performance.match.get_opponent_team.name }}</td>
-                                        <td>{{ performance.runs }}</td>
-                                        <td>{{ performance.balls_faced }}</td>
-                                        <td>{{ performance.strike_rate }}</td>
-                                    </tr>
-                                    {% empty %}
-                                    <tr><td colspan="4">No recent batting performances</td></tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header bg-warning text-dark">
-                            <h5>Recent Bowling Performances</h5>
-                        </div>
-                        <div class="card-body">
-                            <table class="table table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Match</th>
-                                        <th>Wkts</th>
-                                        <th>Runs</th>
-                                        <th>Econ</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for performance in recent_bowling %}
-                                    <tr>
-                                        <td>vs {{ performance.match.get_opponent_team.name }}</td>
-                                        <td>{{ performance.wickets }}</td>
-                                        <td>{{ performance.runs_conceded }}</td>
-                                        <td>{{ performance.economy }}</td>
-                                    </tr>
-                                    {% empty %}
-                                    <tr><td colspan="4">No recent bowling performances</td></tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="card-body table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Rank</th>
+                        <th>Player</th>
+                        <th>Team</th>
+                        <th>Matches</th>
+                        <th>Runs</th>
+                        <th>Average</th>
+                        <th>Strike Rate</th>
+                        <th>50s / 100s</th>
+                        <th>4s / 6s</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for player in batting_stats %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td class="d-flex align-items-center">
+                            {% if player.photo %}
+                                <img src="{{ player.photo.url }}" class="rounded-circle me-2" width="32" height="32" alt="{{ player.name }}">
+                            {% else %}
+                                <img src="{% static 'img/default_player.png' %}" class="rounded-circle me-2" width="32" height="32" alt="No photo">
+                            {% endif %}
+                            <a href="{% url 'player_detail' player.id %}" class="text-decoration-none fw-semibold">{{ player.name }}</a>
+                        </td>
+                        <td>{{ player.team.name }}</td>
+                        <td>{{ player.total_matches_bat|default:0 }}</td>
+                        <td>{{ player.total_runs_calc|default:0 }}</td>
+                        <td>{{ player.batting_avg|floatformat:2|default:"-" }}</td>
+                        <td>{{ player.strike_rate_calc|floatformat:2|default:"-" }}</td>
+                        <td>{{ player.fifties_count|default:0 }}/{{ player.centuries_count|default:0 }}</td>
+                        <td>{{ player.total_fours_calc|default:0 }}/{{ player.total_sixes_calc|default:0 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="9" class="text-center text-muted">No batting stats available</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Bowling Statistics Section -->
+    <div class="card shadow">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">Top Bowlers</h4>
+        </div>
+        <div class="card-body table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Rank</th>
+                        <th>Player</th>
+                        <th>Team</th>
+                        <th>Matches</th>
+                        <th>Wickets</th>
+                        <th>Average</th>
+                        <th>Economy</th>
+                        <th>5W</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for player in bowling_stats %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td class="d-flex align-items-center">
+                            {% if player.photo %}
+                                <img src="{{ player.photo.url }}" class="rounded-circle me-2" width="32" height="32" alt="{{ player.name }}">
+                            {% else %}
+                                <img src="{% static 'img/default_player.png' %}" class="rounded-circle me-2" width="32" height="32" alt="No photo">
+                            {% endif %}
+                            <a href="{% url 'player_detail' player.id %}" class="text-decoration-none fw-semibold">{{ player.name }}</a>
+                        </td>
+                        <td>{{ player.team.name }}</td>
+                        <td>{{ player.total_matches_bowl|default:0 }}</td>
+                        <td>{{ player.total_wickets_calc|default:0 }}</td>
+                        <td>{{ player.bowling_avg|floatformat:2|default:"-" }}</td>
+                        <td>{{ player.economy_rate_calc|floatformat:2|default:"-" }}</td>
+                        <td>{{ player.five_wickets_count|default:0 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="8" class="text-center text-muted">No bowling stats available</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>

@@ -260,64 +260,67 @@
         </div>
 
         <!-- Right Column (4 units) -->
-        <div class="col-md-4">
-            <!-- Top Teams Card -->
-            <div class="card mb-4">
-                <div class="card-header bg-warning text-dark">
-                    <h5>Top Teams</h5>
-                </div>
-                <div class="card-body">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Team</th>
-                                <th>Pts</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for team in standings|slice:":5" %}
-                                <tr>
-                                    <td>
-                                        <a href="{% url 'team_detail' team.id %}">
-                                            <img src="{{ team.logo.url }}" class="team-logo-inline"> {{ team.name }}
-                                        </a>
-                                    </td>
-                                    <td>{{ team.points }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                    <a href="{% url 'standings' %}" class="btn btn-outline-warning btn-custom">View Full Standings</a>
-                </div>
-            </div>
+        <!-- Right Column (4 units) -->
+<div class="col-md-4">
+    <!-- Top Teams Card -->
+    <div class="card mb-4">
+        <div class="card-header bg-warning text-dark">
+            <h5>Top Teams</h5>
+        </div>
+        <div class="card-body">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Team</th>
+                        <th>Pts</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for team in top_teams %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'team_detail' team.id %}">
+                                    <img src="{{ team.logo.url }}" class="team-logo-inline"> {{ team.name }}
+                                </a>
+                            </td>
+                            <td>{{ team.points }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <a href="{% url 'standings' %}" class="btn btn-outline-warning btn-custom">View Full Standings</a>
+        </div>
+    </div>
 
-            <!-- Top Players Card -->
-            <div class="card">
-                <div class="card-header bg-danger text-white">
-                    <h5>Top Players</h5>
-                </div>
-                <div class="card-body">
-                    <h6>Batting</h6>
-                    <ul class="list-group mb-3">
-                        {% for player in top_batsmen|slice:":3" %}
-                            <li class="list-group-item">
-                                <a href="{% url 'player_detail' player.id %}">{{ player.name }}</a>
-                                <span class="float-end">{{ player.total_runs }} runs</span>
-                            </li>
-                        {% endfor %}
-                    </ul>
+    <!-- Top Players Card -->
+    <div class="card">
+        <div class="card-header bg-danger text-white">
+            <h5>Top Players</h5>
+        </div>
+        <div class="card-body">
+            <h6>Batting</h6>
+            <ul class="list-group mb-3">
+                {% for player in top_batsmen %}
+                    <li class="list-group-item">
+                        <a href="{% url 'player_detail' player.id %}">{{ player.name }}</a>
+                        <span class="float-end">{{ player.total_runs_calc }} runs</span>
+                    </li>
+                {% empty %}
+                    <li class="list-group-item">No batting stats available</li>
+                {% endfor %}
+            </ul>
 
-                    <h6>Bowling</h6>
-                    <ul class="list-group">
-                        {% for player in top_bowlers|slice:":3" %}
-                            <li class="list-group-item">
-                                <a href="{% url 'player_detail' player.id %}">{{ player.name }}</a>
-                                <span class="float-end">{{ player.total_wickets }} wickets</span>
-                            </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
+            <h6>Bowling</h6>
+            <ul class="list-group">
+                {% for player in top_bowlers %}
+                    <li class="list-group-item">
+                        <a href="{% url 'player_detail' player.id %}">{{ player.name }}</a>
+                        <span class="float-end">{{ player.total_wickets_calc }} wickets</span>
+                    </li>
+                {% empty %}
+                    <li class="list-group-item">No bowling stats available</li>
+                {% endfor %}
+            </ul>
         </div>
     </div>
 </div>
@@ -329,4 +332,4 @@
         window.location.reload();
     }, 30000);
 </script>
-{% endblock %}
+{% endblock %}

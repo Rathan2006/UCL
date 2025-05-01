@@ -21,7 +21,7 @@ urlpatterns = [
     path('match/<int:match_id>/update_score/', views.update_score, name='update_score'),
     path('match/<int:match_id>/update/', views.update_score, name='update_score'),
 
-   
+    path('match/<int:match_id>/start_second_innings/', views.start_second_innings, name='start_second_innings'),
     path('match/<int:match_id>/initialize/', views.initialize_match_players, name='initialize_match_players'),
     path('match/<int:match_id>/live_data/', views.live_match_data, name='live_match_data'),
     path('match/<int:match_id>/performances/', views.match_performances, name='match_performances'),

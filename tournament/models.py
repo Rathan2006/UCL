@@ -620,6 +620,7 @@ class BowlingPerformance(models.Model):
             self.economy = self.runs_conceded / self.overs
         self.save()
 
+
 class Message(models.Model):
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')
     recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_messages')
@@ -659,67 +660,3 @@ class Ball(models.Model):
         ('penalty', 'Penalty'),
     ])
     timestamp = models.DateTimeField(auto_now_add=True)
-
-
-class DRS(models.Model):
-    match = models.ForeignKey(Match, on_delete=models.CASCADE)
-    requesting_team = models.ForeignKey(Team, on_delete=models.CASCADE)
-    reviewing_player = models.ForeignKey(Player, on_delete=models.CASCADE, null=True)
-    decision = models.CharField(max_length=20, choices=[
-        ('lbw', 'LBW'),
-        ('caught', 'Caught'),
-        ('stumped', 'Stumped'),
-        ('run_out', 'Run Out')
-    ])
-    original_decision = models.CharField(max_length=10, choices=[
-        ('out', 'Out'),
-        ('not_out', 'Not Out')
-    ])
-    DECISION_CHOICES = [
-    ('Out', 'Out'),
-    ('Not Out', 'Not Out'),
-    ('Umpire\'s Call', 'Umpire\'s Call'),  # 13 characters including apostrophe
-    ]
-    reviewed_decision = models.CharField(max_length=20, choices=DECISION_CHOICES)
-    is_successful = models.BooleanField(default=False)
-    timestamp = models.DateTimeField(auto_now_add=True)
-
-class Partnership(models.Model):
-    match = models.ForeignKey(Match, on_delete=models.CASCADE)
-    batter1 = models.ForeignKey(Player, on_delete=models.CASCADE, related_name='batter1_partnerships')
-    batter2 = models.ForeignKey(Player, on_delete=models.CASCADE, related_name='batter2_partnerships')
-    runs = models.IntegerField()
-    balls = models.IntegerField()
-    wicket = models.ForeignKey(BattingPerformance, on_delete=models.SET_NULL, null=True, blank=True)
-    innings = models.IntegerField()
-
-def calculate_partnerships(match):
-    """Calculate all partnerships in the match"""
-    partnerships = []
-    current_partners = []
-    current_runs = 0
-    current_balls = 0
-    
-    for ball in Ball.objects.filter(match=match).order_by('timestamp'):
-        if not current_partners:
-            # New partnership starting
-            current_partners = [match.striker, match.non_striker]
-        
-        current_runs += ball.runs
-        current_balls += 1
-        
-        if ball.is_wicket and ball.batsman in current_partners:
-            # Partnership broken
-            other_partner = [p for p in current_partners if p != ball.batsman][0]
-            partnerships.append({
-                'batter1': ball.batsman,
-                'batter2': other_partner,
-                'runs': current_runs,
-                'balls': current_balls,
-                'wicket': ball
-            })
-            current_partners = []
-            current_runs = 0
-            current_balls = 0
-    
-    return partnerships

@@ -11,7 +11,15 @@ from django.contrib import messages
 from django.template.loader import render_to_string
 from django.views.decorators.cache import never_cache
 from django.contrib.auth import authenticate
+from django.db.models import Sum, Count,IntegerField
+from django.db.models.functions import NullIf
+from django.db.models import Value
+from django.db.models import Case, When, F, Value, FloatField
+from django.db.models.functions import Cast
+from django.shortcuts import render
+from django.db.models.functions import Coalesce
 import math
+
 
 from django.utils import timezone
 
@@ -19,10 +27,87 @@ def index(request):
     live_matches = Match.objects.filter(is_live=True)
     upcoming_matches = Match.objects.filter(date__gte=timezone.now(), is_live=False).order_by('date')[:5]
     recent_matches = Match.objects.filter(date__lt=timezone.now(), is_live=False).order_by('-date')[:5]
+    
+    # Get top teams (first calculate standings)
+    for team in Team.objects.all():
+        # Get completed matches involving the team
+        matches = Match.objects.filter(
+            Q(home_team=team) | Q(away_team=team),
+            is_live=False,
+            date__lt=timezone.now()
+        )
+
+        total_matches = matches.count()
+        wins = 0
+        draws = 0
+
+        for match in matches:
+            # Determine scores
+            home = match.home_team
+            away = match.away_team
+            home_score = match.home_score
+            away_score = match.away_score
+
+            # Skip if scores are missing
+            if home_score is None or away_score is None:
+                continue
+
+            # Determine result
+            if home_score == away_score:
+                draws += 1
+            elif home_score > away_score and team == home:
+                wins += 1
+            elif away_score > home_score and team == away:
+                wins += 1
+
+        losses = total_matches - wins - draws
+        points = wins * 3 + draws
+
+        # Update team stats
+        team.total_matches = total_matches
+        team.wins = wins
+        team.losses = losses
+        team.draws = draws
+        team.points = points
+        team.save()
+
+    # Get top 2 teams
+    top_teams = Team.objects.all().order_by('-points', '-wins')[:2]
+    
+    # Get top 2 batsmen
+    top_batsmen = Player.objects.annotate(
+        total_runs_calc=Sum('batting_performances__runs'),
+        total_matches_bat=Count('batting_performances__match', distinct=True),
+        total_balls_faced_calc=Sum('batting_performances__balls_faced'),
+    ).annotate(
+        strike_rate_calc=Case(
+            When(total_balls_faced_calc=0, then=Value(0.0)),
+            default=Cast(F('total_runs_calc') * 100, FloatField()) / Cast(F('total_balls_faced_calc'), FloatField()),
+            output_field=FloatField()
+        )
+    ).filter(total_runs_calc__gt=0).order_by('-total_runs_calc')[:2]
+    
+    # Get top 2 bowlers
+    top_bowlers = Player.objects.annotate(
+        total_wickets_calc=Sum('bowling_performances__wickets'),
+        total_matches_bowl=Count('bowling_performances__match', distinct=True),
+        total_runs_conceded_calc=Sum('bowling_performances__runs_conceded'),
+        total_overs_bowled_calc=Sum('bowling_performances__overs'),
+    ).annotate(
+        bowling_avg=Case(
+            When(total_wickets_calc=0, then=Value(0.0)),
+            default=Cast(F('total_runs_conceded_calc'), FloatField()) / Cast(F('total_wickets_calc'), FloatField()),
+            output_field=FloatField()
+        )
+    ).filter(total_wickets_calc__gt=0).order_by('-total_wickets_calc')[:2]
+    
     context = {
         'live_matches': live_matches,
         'upcoming_matches': upcoming_matches,
         'recent_matches': recent_matches,
+        'top_teams': top_teams,
+        'top_batsmen': top_batsmen,
+        'top_bowlers': top_bowlers,
     }
     return render(request, 'tournament/index.html', context)
 
@@ -173,9 +258,72 @@ def custom_logout(request):
 
 @login_required
 def player_stats(request):
+    # Batting stats - Cricbuzz-style: most runs on top
+    batting_stats = Player.objects.annotate(
+        total_runs_calc=Sum('batting_performances__runs'),
+        total_matches_bat=Count('batting_performances__match', distinct=True),
+        total_fours_calc=Sum('batting_performances__fours'),
+        total_sixes_calc=Sum('batting_performances__sixes'),
+        total_balls_faced_calc=Sum('batting_performances__balls_faced'),
+        fifties_count=Count(
+            Case(
+                When(batting_performances__runs__gte=50, batting_performances__runs__lt=100, then=1),
+                output_field=IntegerField()
+            )
+        ),
+        centuries_count=Count(
+            Case(
+                When(batting_performances__runs__gte=100, then=1),
+                output_field=IntegerField()
+            )
+        ),
+        dismissals_count=Count(
+            Case(
+                When(batting_performances__not_out=False, then=1),
+                output_field=IntegerField()
+            )
+        )
+    ).annotate(
+        batting_avg=Case(
+            When(dismissals_count=0, then=Value(0.0)),
+            default=Cast(F('total_runs_calc'), FloatField()) / Cast(F('dismissals_count'), FloatField()),
+            output_field=FloatField()
+        ),
+        strike_rate_calc=Case(
+            When(total_balls_faced_calc=0, then=Value(0.0)),
+            default=Cast(F('total_runs_calc') * 100, FloatField()) / Cast(F('total_balls_faced_calc'), FloatField()),
+            output_field=FloatField()
+        )
+    ).filter(total_runs_calc__gt=0).order_by('-total_runs_calc')
+
+    # Bowling stats - Cricbuzz-style: most wickets on top
+    bowling_stats = Player.objects.annotate(
+        total_wickets_calc=Sum('bowling_performances__wickets'),
+        total_matches_bowl=Count('bowling_performances__match', distinct=True),
+        total_runs_conceded_calc=Sum('bowling_performances__runs_conceded'),
+        total_overs_bowled_calc=Sum('bowling_performances__overs'),
+        five_wickets_count=Count(
+            Case(
+                When(bowling_performances__wickets__gte=5, then=1),
+                output_field=IntegerField()
+            )
+        )
+    ).annotate(
+        bowling_avg=Case(
+            When(total_wickets_calc=0, then=Value(0.0)),
+            default=Cast(F('total_runs_conceded_calc'), FloatField()) / Cast(F('total_wickets_calc'), FloatField()),
+            output_field=FloatField()
+        ),
+        economy_rate_calc=Case(
+            When(total_overs_bowled_calc=0, then=Value(0.0)),
+            default=Cast(F('total_runs_conceded_calc'), FloatField()) / Cast(F('total_overs_bowled_calc'), FloatField()),
+            output_field=FloatField()
+        )
+    ).filter(total_wickets_calc__gt=0).order_by('-total_wickets_calc')
+
     return render(request, 'tournament/player_stats.html', {
-        'batting_performances': BattingPerformance.objects.all(),
-        'bowling_performances': BowlingPerformance.objects.all(),
+        'batting_stats': batting_stats,
+        'bowling_stats': bowling_stats,
     })
 
 @login_required
@@ -222,18 +370,49 @@ def initialize_match_players(request, match_id):
         try:
             if 'striker' in request.POST:
                 match.striker = Player.objects.get(id=request.POST['striker'])
+                BattingPerformance.objects.create(
+                        player=match.striker,
+                        match=match,
+                        innings=match.innings,
+                        runs=0,
+                        balls_faced=0,
+                        fours=0,
+                        sixes=0,
+                        not_out=True
+                    )
                 match.striker_runs = 0
                 match.striker_balls = 0
                 match.striker_fours = 0
                 match.striker_sixes = 0
             if 'non_striker' in request.POST:
                 match.non_striker = Player.objects.get(id=request.POST['non_striker'])
+                BattingPerformance.objects.create(
+                        player=match.non_striker,
+                        match=match,
+                        innings=match.innings,
+                        runs=0,
+                        balls_faced=0,
+                        fours=0,
+                        sixes=0,
+                        not_out=True
+                    )
                 match.non_striker_runs = 0
                 match.non_striker_balls = 0
                 match.non_striker_fours = 0
                 match.non_striker_sixes = 0
             if 'bowler' in request.POST:
                 match.bowler = Player.objects.get(id=request.POST['bowler'])
+                bowling_performance = BowlingPerformance.objects.create(
+                        player=match.bowler,
+                        match=match,
+                        runs_conceded=0,
+                        wickets=0,
+                        innings=match.innings,
+                        overs=0,
+                        maidens=0,
+                        economy=0,
+                    ) 
+
                 match.bowler_runs = 0
                 match.bowler_wickets = 0
                 match.bowler_balls = 0
@@ -359,13 +538,16 @@ def match_detail(request, match_id):
         second_innings_team = match.batting_team if match.innings == 1 else match.away_team
         second_innings_bowling_team = match.bowling_team if match.innings == 1 else match.home_team
     
+    is_upcoming = match.date > timezone.now()
+    is_past = match.date <= timezone.now() and not match.is_live and match.status != 'COMPLETED'
+
     # Calculate target for second innings
     target = None
     if match.innings == 2 and first_innings_total['runs__sum'] is not None:
         target = first_innings_total['runs__sum'] + 1
     
     context = {
-        'can_set_live': not match.is_live and match.date <= timezone.now() and request.user.is_superuser,
+        'can_set_live': is_upcoming and not match.is_live and request.user.is_superuser,
         'can_start_match': match.is_live and match.innings == 1 and not match.striker and request.user.is_superuser,
         'match': match,
         'first_innings_batting': first_innings_batting,
@@ -384,6 +566,54 @@ def match_detail(request, match_id):
     }
     
     return render(request, 'tournament/match_detail.html', context)
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def start_second_innings(request, match_id):
+    match = get_object_or_404(Match, id=match_id)
+    
+    # Check if we can start second innings
+    first_innings_completed = (
+        match.is_live and 
+        match.innings == 1 and 
+        (match.total_wickets >= 10 or match.current_over >= 10)
+    )
+
+    if first_innings_completed:  
+        # Switch innings
+        match.innings = 2
+        match.batting_team, match.bowling_team = match.bowling_team, match.batting_team
+        
+        # Reset all counters
+        match.current_over = 0
+        match.current_ball = 0
+        match.total_runs = 0
+        match.total_wickets = 0
+        match.striker = None
+        match.non_striker = None
+        match.striker_runs = 0
+        match.striker_balls = 0
+        match.striker_fours = 0
+        match.striker_sixes = 0
+        match.non_striker_runs = 0
+        match.non_striker_balls = 0
+        match.non_striker_fours = 0
+        match.non_striker_sixes = 0
+        match.bowler = None
+        match.bowler_runs = 0
+        match.bowler_wickets = 0
+        match.bowler_balls = 0
+        match.bowler_wides = 0
+        match.bowler_no_balls = 0
+        
+        match.save()
+        
+        messages.success(request, "Second innings started successfully!")
+        return redirect('initialize_match_players', match_id=match.id)
+    else:
+        messages.error(request, "Cannot start second innings at this time. First innings must be completed.")
+        return redirect('match_detail', match_id=match_id)
+    
 @login_required
 @user_passes_test(lambda u: u.is_superuser)
 def update_score(request, match_id):
@@ -409,9 +639,10 @@ def update_score(request, match_id):
                     )
                 bowler_performance.runs_conceded += runs
                 bowler_performance.overs += 0.1
-                econ_overs=bowler_performance.overs//10
-                econ_balls=bowler_performance.overs%10
-                t_balls=((econ_overs*6)+econ_balls)
+                econ_overs=bowler_performance.overs//1
+                econ_temp=math.floor(bowler_performance.overs)
+                econ_balls=bowler_performance.overs-econ_temp
+                t_balls=((econ_overs*6)+econ_balls*10)
                 if t_balls!=0: 
                     bowler_performance.economy = round((bowler_performance.runs_conceded / t_balls) * 6, 2)
                 bowler_performance.save()
@@ -438,6 +669,8 @@ def update_score(request, match_id):
                     match.striker_sixes, match.non_striker_sixes = match.non_striker_sixes, match.striker_sixes
                 
                 match.current_ball += 1
+                crr_balls=match.current_over*6+match.current_ball
+                match.current_run_rate=round((match.total_runs/crr_balls)*6,2)
                 match.save()
                 
                 return JsonResponse({
@@ -465,15 +698,18 @@ def update_score(request, match_id):
                 match.total_runs += 1
                 match.bowler_runs += 1
                 match.bowler_wides += 1
+                crr_balls=match.current_over*6+match.current_ball
+                match.current_run_rate=round((match.total_runs/crr_balls)*6,2)
                 match.save()
                 bowler_performance = BowlingPerformance.objects.get(
                     player=match.bowler,
                     match=match,
                     )
                 bowler_performance.runs_conceded += 1
-                econ_overs=bowler_performance.overs//10
-                econ_balls=bowler_performance.overs%10
-                t_balls=((econ_overs*6)+econ_balls)
+                econ_overs=bowler_performance.overs//1
+                econ_temp=math.floor(bowler_performance.overs)
+                econ_balls=bowler_performance.overs-econ_temp
+                t_balls=((econ_overs*6)+econ_balls*10)
                 if t_balls!=0: 
                     bowler_performance.economy = round((bowler_performance.runs_conceded / t_balls) * 6, 2)
                 bowler_performance.save()
@@ -489,15 +725,18 @@ def update_score(request, match_id):
                 match.total_runs += 1
                 match.bowler_runs += 1
                 match.bowler_no_balls += 1
+                crr_balls=match.current_over*6+match.current_ball
+                match.current_run_rate=round((match.total_runs/crr_balls)*6,2)
                 match.save()
                 bowler_performance = BowlingPerformance.objects.get(
                     player=match.bowler,
                     match=match,
                     )
                 bowler_performance.runs_conceded += 1
-                econ_overs=bowler_performance.overs//10
-                econ_balls=bowler_performance.overs%10
-                t_balls=((econ_overs*6)+econ_balls)
+                econ_overs=bowler_performance.overs//1
+                econ_temp=math.floor(bowler_performance.overs)
+                econ_balls=bowler_performance.overs-econ_temp
+                t_balls=((econ_overs*6)+econ_balls*10)
                 if t_balls!=0: 
                     bowler_performance.economy = round((bowler_performance.runs_conceded / t_balls) * 6, 2)
                 bowler_performance.save()
@@ -516,6 +755,8 @@ def update_score(request, match_id):
                 match.total_wickets += 1
                 match.bowler_wickets += 1
                 match.current_ball += 1
+                crr_balls=match.current_over*6+match.current_ball
+                match.current_run_rate=round((match.total_runs/crr_balls)*6,2)
                 striker_performance = BattingPerformance.objects.get(
                     player=match.striker,
                     match=match,
@@ -526,8 +767,16 @@ def update_score(request, match_id):
                     player=match.bowler,
                     match=match,
                     )
+                striker_performance.not_out = False
                 bowler_performance.wickets += 1
-
+                bowler_performance.overs += 0.1
+                econ_overs=bowler_performance.overs//1
+                econ_temp=math.floor(bowler_performance.overs)
+                econ_balls=bowler_performance.overs-econ_temp
+                t_balls=((econ_overs*6)+econ_balls*10)
+                if t_balls!=0: 
+                    bowler_performance.economy = round((bowler_performance.runs_conceded / t_balls) * 6, 2)
+                bowler_performance.save()
                 match.save()
                 
                 
@@ -618,6 +867,7 @@ def update_score(request, match_id):
                 if match.innings == 1:
                     match.innings = 2
                     match.batting_team, match.bowling_team = match.bowling_team, match.batting_team
+                    
                     
                     # Reset all counters
                     match.current_over = 0

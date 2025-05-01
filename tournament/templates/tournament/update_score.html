@@ -42,7 +42,7 @@
                     <p><strong>Bowler:</strong> 
                         <span id="bowler-name">{{ match.bowler.name }}</span> 
                         (<span id="bowler-stats">{{ match.bowler_runs }}/{{ match.bowler_wickets }}</span>)
-                        <span id="bowler-overs">[{{ match.bowler_balls|div:6|floatformat:1 }}]</span>
+                        {% comment %} <span id="bowler-overs">[{{ match.bowler_balls|div:6|floatformat:1 }}]</span> {% endcomment %}
                     </p>
                     <p><strong>Current Over:</strong> 
                         <span id="current-over">{{ match.current_over }}.{{ match.current_ball }}</span>
@@ -724,12 +724,19 @@ $(document).ready(function() {
                     'csrfmiddlewaretoken': $('input[name=csrfmiddlewaretoken]').val()
                 },
                 success: function(response) {
-                    if (response.status === 'success') {
-                        if (response.new_innings) {
-                            // Reload the page to show new innings setup
-                            location.reload();
+                    if (response.status === 'redirect') {
+                        // Redirect to the initialize players page
+                        window.location.href = response.url;
+                    } else if (response.status === 'success') {
+                        // Handle other success cases (like completing the match)
+                        if (response.message) {
+                            alert(response.message);
                         }
+                        location.reload();
                     }
+                },
+                error: function(xhr, status, error) {
+                    alert("Error completing innings: " + error);
                 }
             });
         }
@@ -783,6 +790,7 @@ $(document).ready(function() {
             });
         }
     });
+    
 
     // Function to update score display
     function updateScoreDisplay(data) {

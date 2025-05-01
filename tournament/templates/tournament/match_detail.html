@@ -287,8 +287,6 @@
                                             <th>R</th>
                                             <th>W</th>
                                             <th>Econ</th>
-                                            <th>Extras</th>
-                                        </tr>
                                     </thead>
                                     <tbody>
                                         {% for performance in first_innings_bowling %}
@@ -324,7 +322,6 @@
                                             <th>R</th>
                                             <th>W</th>
                                             <th>Econ</th>
-                                            <th>Extras</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -354,26 +351,36 @@
     </div>
 
     <!-- Admin Controls -->
+<!-- Admin Controls -->
+<!-- Admin Controls -->
+<!-- Admin Controls -->
+<!-- Admin Controls -->
 {% if user.is_superuser %}
 <div class="mt-4 text-center">
     {% if can_set_live %}
-        <!-- Button to set match live (for upcoming matches) -->
         <a href="{% url 'set_match_live' match.id %}" class="btn btn-lg btn-success">
             <i class="fas fa-play"></i> Set Match Live
         </a>
     {% elif can_start_match %}
-        <!-- Button to start match (after setting live but before first innings) -->
         <a href="{% url 'initialize_match_players' match.id %}" class="btn btn-lg btn-primary">
             <i class="fas fa-play"></i> Start Match
         </a>
+    {% elif can_start_second_innings %}
+        <form action="{% url 'start_second_innings' match.id %}" method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-lg btn-warning">
+                <i class="fas fa-redo"></i> Start Second Innings
+            </button>
+        </form>
     {% elif match.is_live %}
-        <!-- Button to update live score (already exists in your code) -->
         <a href="{% url 'update_score' match.id %}" class="btn btn-lg btn-danger">
             <i class="fas fa-edit"></i> Update Live Score
         </a>
     {% endif %}
 </div>
 {% endif %}
+
+
 </div>
 
 <style>
