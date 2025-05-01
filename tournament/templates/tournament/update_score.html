@@ -1,0 +1,833 @@
+{% extends 'tournament/base.html' %}
+{% load static %}
+{% load math_filters %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Match Header -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h2>{{ match.home_team.name }} vs {{ match.away_team.name }}</h2>
+            <h5>{{ match.date|date:"F j, Y H:i" }} at {{ match.venue }}</h5>
+            <span class="badge bg-danger">LIVE</span>
+            {% if match.innings == 1 %}
+                <h4>{{ match.batting_team.name }}: {{ match.total_runs }}/{{ match.total_wickets }} ({{ match.current_over }}.{{ match.current_ball }})</h4>
+            {% else %}
+                <h4>{{ match.batting_team.name }}: {{ match.total_runs }}/{{ match.total_wickets }} ({{ match.current_over }}.{{ match.current_ball }}) - Target: {{ target|default:0 }}</h4>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <h4>Match Summary</h4>
+                    <p><strong>Toss:</strong> {{ match.toss_winner.name }} chose to {{ match.toss_decision }}</p>
+                    <p><strong>Batting:</strong> {{ match.batting_team.name }}</p>
+                    <p><strong>Bowling:</strong> {{ match.bowling_team.name }}</p>
+                </div>
+                <div class="col-md-4">
+                    <h4>Current Batsmen</h4>
+                    <p><strong>Striker:</strong> 
+                        <span id="striker-name">{{ match.striker.name }}</span> 
+                        (<span id="striker-runs">{{ match.striker_runs }}</span>)
+                        <span id="striker-balls">[{{ match.striker_balls }}]</span>
+                    </p>
+                    <p><strong>Non-Striker:</strong> 
+                        <span id="non-striker-name">{{ match.non_striker.name }}</span> 
+                        (<span id="non-striker-runs">{{ match.non_striker_runs }}</span>)
+                        <span id="non-striker-balls">[{{ match.non_striker_balls }}]</span>
+                    </p>
+                </div>
+                <div class="col-md-4">
+                    <h4>Current Bowler</h4>
+                    <p><strong>Bowler:</strong> 
+                        <span id="bowler-name">{{ match.bowler.name }}</span> 
+                        (<span id="bowler-stats">{{ match.bowler_runs }}/{{ match.bowler_wickets }}</span>)
+                        <span id="bowler-overs">[{{ match.bowler_balls|div:6|floatformat:1 }}]</span>
+                    </p>
+                    <p><strong>Current Over:</strong> 
+                        <span id="current-over">{{ match.current_over }}.{{ match.current_ball }}</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Selection Forms -->
+    {% if not match.striker or not match.non_striker or not match.bowler %}
+    <div class="card mb-4" id="player-selection">
+        <div class="card-header bg-warning">
+            <h4>Select Starting Players</h4>
+        </div>
+        <div class="card-body">
+            <form method="post" id="player-form">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="striker">Striker (Batsman 1)</label>
+                            <select class="form-control" id="striker" name="striker" required>
+                                <option value="">Select Striker</option>
+                                {% for player in batting_players %}
+                                <option value="{{ player.id }}">{{ player.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="non_striker">Non-Striker (Batsman 2)</label>
+                            <select class="form-control" id="non_striker" name="non_striker" required>
+                                <option value="">Select Non-Striker</option>
+                                {% for player in batting_players %}
+                                <option value="{{ player.id }}">{{ player.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="bowler">Bowler</label>
+                            <select class="form-control" id="bowler" name="bowler" required>
+                                <option value="">Select Bowler</option>
+                                {% for player in bowling_players %}
+                                <option value="{{ player.id }}">{{ player.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-center mt-3">
+                    <button type="submit" class="btn btn-primary">Start Match</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Score Update Controls -->
+    <div class="card mb-4" id="score-controls" {% if not match.striker or not match.non_striker or not match.bowler %}style="display:none;"{% endif %}>
+        <div class="card-header bg-success text-white">
+            <h4>Update Score</h4>
+        </div>
+        <div class="card-body">
+            <div class="row text-center">
+                <!-- Runs Buttons -->
+                <div class="col-md-8 mb-3">
+                    <h5>Add Runs</h5>
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-outline-primary run-btn" data-runs="0">0</button>
+                        <button type="button" class="btn btn-outline-primary run-btn" data-runs="1">1</button>
+                        <button type="button" class="btn btn-outline-primary run-btn" data-runs="2">2</button>
+                        <button type="button" class="btn btn-outline-primary run-btn" data-runs="3">3</button>
+                        <button type="button" class="btn btn-outline-primary run-btn" data-runs="4">4</button>
+                        <button type="button" class="btn btn-outline-primary run-btn" data-runs="5">5</button>
+                        <button type="button" class="btn btn-outline-primary run-btn" data-runs="6">6</button>
+                    </div>
+                </div>
+                
+                <!-- Special Buttons -->
+                <div class="col-md-4 mb-3">
+                    <h5>Special</h5>
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-outline-danger" id="wicket-btn">Wicket</button>
+                        <button type="button" class="btn btn-outline-warning" id="wide-btn">Wide</button>
+                        <button type="button" class="btn btn-outline-warning" id="noball-btn">No Ball</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row text-center">
+                <div class="col-md-4 mb-3">
+                    <button type="button" class="btn btn-info" id="over-btn">Complete Over</button>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <button type="button" class="btn btn-secondary" id="innings-btn">Complete Innings</button>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <button type="button" class="btn btn-dark" id="complete-btn">Complete Match</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wicket Modals -->
+    <div class="modal fade" id="wicketTypeModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Select Wicket Type</h5>
+                </div>
+                <div class="modal-body text-center">
+                    <button id="bowledBtn" class="btn btn-outline-primary m-2">Bowled</button>
+                    <button id="caughtBtn" class="btn btn-outline-primary m-2">Caught</button>
+                    <button id="lbwBtn" class="btn btn-outline-primary m-2">LBW</button>
+                    <button id="stumpedBtn" class="btn btn-outline-primary m-2">Stumped</button>
+                    <button id="runoutBtn" class="btn btn-outline-danger m-2">Run Out</button>
+                    <button id="hitWicketBtn" class="btn btn-outline-primary m-2">Hit Wicket</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="whoOutModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Select Who Got Out</h5>
+                </div>
+                <div class="modal-body text-center">
+                    <button id="strikerOutBtn" class="btn btn-danger btn-lg m-2">Striker Out</button>
+                    <button id="nonStrikerOutBtn" class="btn btn-secondary btn-lg m-2">Non-Striker Out</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Next Batsman Modal -->
+    <div class="modal fade" id="nextBatsmanModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Select Next Batsman</h5>
+                </div>
+                <div class="modal-body">
+                    <form id="nextBatsmanForm">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="next_batsman">Next Batsman</label>
+                            <select class="form-control" id="next_batsman" name="next_batsman" required>
+                                <option value="">Select Batsman</option>
+                                {% for player in available_batsmen %}
+                                <option value="{{ player.id }}" {% if player.id in out_batsmen %}disabled{% endif %}>
+                                    {{ player.name }}{% if player.id in out_batsmen %} (OUT){% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="confirm-next-batsman">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Next Bowler Modal -->
+    <div class="modal fade" id="nextBowlerModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Select Next Bowler</h5>
+                </div>
+                <div class="modal-body">
+                    <form id="nextBowlerForm">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="next_bowler">Next Bowler</label>
+                            <select class="form-control" id="next_bowler" name="next_bowler" required>
+                                <option value="">Select Bowler</option>
+                                {% for player in available_bowlers %}
+                                <option value="{{ player.id }}">{{ player.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="confirm-next-bowler">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Man of the Match Modal -->
+    <div class="modal fade" id="motmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Select Man of the Match</h5>
+                </div>
+                <div class="modal-body">
+                    <form id="motmForm">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="motm">Man of the Match</label>
+                            <select class="form-control" id="motm" name="motm" required>
+                                <option value="">Select Player</option>
+                                {% for player in all_players %}
+                                <option value="{{ player.id }}">{{ player.name }} ({{ player.team.name }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="confirm-motm">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scorecard Tabs -->
+    <ul class="nav nav-tabs" id="scorecardTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="batting-tab" data-bs-toggle="tab" 
+                    data-bs-target="#batting" type="button" role="tab">
+                Batting
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="bowling-tab" data-bs-toggle="tab" 
+                    data-bs-target="#bowling" type="button" role="tab">
+                Bowling
+            </button>
+        </li>
+    </ul>
+    
+    <div class="tab-content" id="scorecardContent">
+        <!-- Batting Tab -->
+        <div class="tab-pane fade show active" id="batting" role="tabpanel">
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h4>Batting Scorecard - Innings {{ match.innings }}</h4>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Batsman</th>
+                                    <th>R</th>
+                                    <th>B</th>
+                                    <th>4s</th>
+                                    <th>6s</th>
+                                    <th>SR</th>
+                                    <th>Out</th>
+                                </tr>
+                            </thead>
+                            <tbody id="batting-body">
+                                {% for performance in batting_performances %}
+                                <tr class="{% if not performance.not_out %}table-danger{% endif %}">
+                                    <td>
+                                        {{ performance.player.name }}
+                                        {% if not performance.not_out %}
+                                            <small class="text-muted">
+                                                {% if performance.wicket_type == 'bowled' %}
+                                                    b {{ performance.bowler.name }}
+                                                {% elif performance.wicket_type == 'caught' %}
+                                                    c {% if performance.fielder %}{{ performance.fielder.name }}{% endif %} b {{ performance.bowler.name }}
+                                                {% elif performance.wicket_type == 'lbw' %}
+                                                    lbw b {{ performance.bowler.name }}
+                                                {% elif performance.wicket_type == 'run_out' %}
+                                                    run out ({% if performance.fielder %}{{ performance.fielder.name }}{% endif %})
+                                                {% elif performance.wicket_type == 'stumped' %}
+                                                    st {{ performance.fielder.name }} b {{ performance.bowler.name }}
+                                                {% else %}
+                                                    out
+                                                {% endif %}
+                                            </small>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ performance.runs }}</td>
+                                    <td>{{ performance.balls_faced }}</td>
+                                    <td>{{ performance.fours }}</td>
+                                    <td>{{ performance.sixes }}</td>
+                                    <td>{{ performance.strike_rate|floatformat:2 }}</td>
+                                    <td>{% if not performance.not_out %}Yes{% else %}No{% endif %}</td>
+                                </tr>
+                                {% endfor %}
+                                {% if match.striker %}
+                                <tr>
+                                    <td>{{ match.striker.name }} *</td>
+                                    <td>{{ match.striker_runs }}</td>
+                                    <td>{{ match.striker_balls }}</td>
+                                    <td>{{ match.striker_fours }}</td>
+                                    <td>{{ match.striker_sixes }}</td>
+                                    <td>
+                                        {% if match.striker_balls > 0 %}
+                                            {{ match.striker_runs|divide:match.striker_balls|multiply:100|floatformat:2 }}
+                                        {% else %}
+                                            0.00
+                                        {% endif %}
+                                    </td>
+                                    <td>No</td>
+                                </tr>
+                                {% endif %}
+                                {% if match.non_striker %}
+                                <tr>
+                                    <td>{{ match.non_striker.name }}</td>
+                                    <td>{{ match.non_striker_runs }}</td>
+                                    <td>{{ match.non_striker_balls }}</td>
+                                    <td>{{ match.non_striker_fours }}</td>
+                                    <td>{{ match.non_striker_sixes }}</td>
+                                    <td>
+                                        {% if match.non_striker_balls > 0 %}
+                                            {{ match.non_striker_runs|divide:match.non_striker_balls|multiply:100|floatformat:2 }}
+                                        {% else %}
+                                            0.00
+                                        {% endif %}
+                                    </td>
+                                    <td>No</td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Bowling Tab -->
+        <div class="tab-pane fade" id="bowling" role="tabpanel">
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h4>Bowling Scorecard - Innings {{ match.innings }}</h4>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Bowler</th>
+                                    <th>O</th>
+                                    <th>M</th>
+                                    <th>R</th>
+                                    <th>W</th>
+                                    <th>Econ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bowling-body">
+                                {% for performance in bowling_performances %}
+                                <tr>
+                                    <td>{{ performance.player.name }}</td>
+                                    <td>{{ performance.overs|floatformat:1 }}</td>
+                                    <td>{{ performance.maidens }}</td>
+                                    <td>{{ performance.runs_conceded }}</td>
+                                    <td>{{ performance.wickets }}</td>
+                                    <td>{{ performance.economy|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                                {% if match.bowler %}
+                                <tr>
+                                    <td>{{ match.bowler.name }} *</td>
+                                    <td>{{ match.bowler_balls|div:6|floatformat:1 }}</td>
+                                    <td>0</td>
+                                    <td>{{ match.bowler_runs }}</td>
+                                    <td>{{ match.bowler_wickets }}</td>
+                                    <td>
+                                        {% if match.bowler_balls > 0 %}
+                                            {{ match.bowler_runs|divide:match.bowler_balls|multiply:6|floatformat:2 }}
+                                        {% else %}
+                                            0.00
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .table-responsive {
+        overflow-x: auto;
+    }
+    .nav-tabs .nav-link {
+        font-weight: 500;
+    }
+    .table th {
+        white-space: nowrap;
+    }
+    .badge {
+        font-size: 0.8rem;
+    }
+    .table-danger {
+        background-color: rgba(220, 53, 69, 0.1);
+    }
+    .btn-group .btn {
+        min-width: 50px;
+    }
+    #score-controls .btn {
+        margin: 5px;
+    }
+    .modal-header {
+        text-align: center;
+    }
+    .modal-content {
+        border-radius: 15px;
+    }
+    .modal-body button {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+    .btn-outline-primary {
+        font-size: 1.2rem;
+        padding: 10px;
+    }
+    .btn-outline-danger {
+        font-size: 1.2rem;
+        padding: 10px;
+    }
+    #next_batsman option[disabled] {
+        color: red;
+    }
+</style>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function() {
+    // Initialize player selection if needed
+    {% if not match.striker or not match.non_striker or not match.bowler %}
+        $('#player-selection').show();
+    {% endif %}
+
+    // Handle player form submission
+    $('#player-form').on('submit', function(e) {
+        e.preventDefault();
+        $.ajax({
+            url: "{% url 'update_score' match.id %}",
+            type: "POST",
+            data: {
+                'action': 'set_initial_players',
+                'striker': $('#striker').val(),
+                'non_striker': $('#non_striker').val(),
+                'bowler': $('#bowler').val(),
+                'csrfmiddlewaretoken': $('input[name=csrfmiddlewaretoken]').val()
+            },
+            success: function(response) {
+                if (response.status === 'success') {
+                    $('#player-selection').hide();
+                    $('#score-controls').show();
+                    location.reload();
+                }
+            }
+        });
+    });
+
+    // Handle run buttons
+    $('.run-btn').click(function() {
+        const runs = $(this).data('runs');
+        $.ajax({
+            url: "{% url 'update_score' match.id %}",
+            type: "POST",
+            data: {
+                'action': 'add_runs',
+                'runs': runs,
+                'csrfmiddlewaretoken': $('input[name=csrfmiddlewaretoken]').val()
+            },
+            success: function(response) {
+                if (response.status === 'success') {
+                    updateScoreDisplay(response);
+                }
+            }
+        });
+    });
+
+    // Handle wide button
+    $('#wide-btn').click(function() {
+        $.ajax({
+            url: "{% url 'update_score' match.id %}",
+            type: "POST",
+            data: {
+                'action': 'add_wide',
+                'csrfmiddlewaretoken': $('input[name=csrfmiddlewaretoken]').val()
+            },
+            success: function(response) {
+                updateScoreDisplay(response);
+            }
+        });
+    });
+
+    // Handle no ball button
+    $('#noball-btn').click(function() {
+        $.ajax({
+            url: "{% url 'update_score' match.id %}",
+            type: "POST",
+            data: {
+                'action': 'add_noball',
+                'csrfmiddlewaretoken': $('input[name=csrfmiddlewaretoken]').val()
+            },
+            success: function(response) {
+                updateScoreDisplay(response);
+            }
+        });
+    });
+
+    // Handle wicket button
+    $('#wicket-btn').click(function() {
+        $('#wicketTypeModal').modal('show');
+    });
+
+    // Wicket type selection
+    $('#bowledBtn, #caughtBtn, #lbwBtn, #stumpedBtn, #hitWicketBtn').click(function() {
+        const wicketType = $(this).attr('id').replace('Btn', '');
+        $('#wicketTypeModal').modal('hide');
+        
+        // For regular dismissals, striker is out
+        $.ajax({
+            url: "{% url 'update_score' match.id %}",
+            type: "POST",
+            data: {
+                'action': 'add_wicket',
+                'wicket_type': wicketType,
+                'out_player': 'striker',
+                'csrfmiddlewaretoken': $('input[name=csrfmiddlewaretoken]').val()
+            },
+            success: function(response) {
+                if (response.status === 'success' && response.needs_new_batsman) {
+                    // Update the score display immediately
+                    $('#total-wickets').text(response.total_wickets);
+                    
+                    // Populate the next batsman dropdown
+                    $('#next_batsman').empty();
+                    $.each(response.available_batsmen, function(i, player) {
+                        $('#next_batsman').append($('<option>', {
+                            value: player.id,
+                            text: player.name
+                        }));
+                    });
+
+                    $('#nextBatsmanModal').modal('show');
+                }
+            }
+        });
+    });
+
+    // Run out requires selecting who is out
+    $('#runoutBtn').click(function() {
+        $('#wicketTypeModal').modal('hide');
+        $('#whoOutModal').modal('show');
+    });
+
+    // Handle who got out for run out
+    $('#strikerOutBtn, #nonStrikerOutBtn').click(function() {
+        const outPlayer = $(this).attr('id').replace('OutBtn', '');
+        $('#whoOutModal').modal('hide');
+        
+        $.ajax({
+            url: "{% url 'update_score' match.id %}",
+            type: "POST",
+            data: {
+                'action': 'add_wicket',
+                'wicket_type': 'run_out',
+                'out_player': outPlayer,
+                'csrfmiddlewaretoken': $('input[name=csrfmiddlewaretoken]').val()
+            },
+            success: function(response) {
+                if (response.status === 'success' && response.needs_new_batsman) {
+                    // Update the score display immediately
+                    $('#total-wickets').text(response.total_wickets);
+                    
+                    // Populate the next batsman dropdown
+                    $('#next_batsman').empty();
+                    $.each(response.available_batsmen, function(i, player) {
+                        $('#next_batsman').append($('<option>', {
+                            value: player.id,
+                            text: player.name
+                        }));
+                    });
+
+                    $('#nextBatsmanModal').modal('show');
+                }
+            }
+        });
+    });
+
+    // Confirm next batsman
+    $('#confirm-next-batsman').click(function() {
+        const nextBatsmanId = $('#next_batsman').val();
+        
+        if (nextBatsmanId) {
+            $.ajax({
+                url: "{% url 'update_score' match.id %}",
+                type: "POST",
+                data: {
+                    'action': 'set_next_batsman',
+                    'batsman_id': nextBatsmanId,
+                    'csrfmiddlewaretoken': $('input[name=csrfmiddlewaretoken]').val()
+                },
+                success: function(response) {
+                    if (response.status === 'success') {
+                        $('#nextBatsmanModal').modal('hide');
+                        updateScoreDisplay(response);
+                    }
+                }
+            });
+        }
+    });
+
+    // Handle over complete button
+    $('#over-btn').click(function() {
+        $.ajax({
+            url: "{% url 'update_score' match.id %}",
+            type: "POST",
+            data: {
+                'action': 'complete_over',
+                'csrfmiddlewaretoken': $('input[name=csrfmiddlewaretoken]').val()
+            },
+            success: function(response) {
+                if (response.status === 'success') {
+                    updateScoreDisplay(response);
+                    if (response.available_bowlers && response.available_bowlers.length > 0) {
+                        $('#next_bowler').empty();
+                        $.each(response.available_bowlers, function(i, player) {
+                            $('#next_bowler').append($('<option>', {
+                                value: player.id,
+                                text: player.name
+                            }));
+                        });
+                        $('#nextBowlerModal').modal('show');
+                    }
+                }
+            }
+        });
+    });
+
+    // Confirm next bowler
+    $('#confirm-next-bowler').click(function() {
+        const nextBowlerId = $('#next_bowler').val();
+        if (nextBowlerId) {
+            $.ajax({
+                url: "{% url 'update_score' match.id %}",
+                type: "POST",
+                data: {
+                    'action': 'set_next_bowler',
+                    'bowler_id': nextBowlerId,
+                    'csrfmiddlewaretoken': $('input[name=csrfmiddlewaretoken]').val()
+                },
+                success: function(response) {
+                    if (response.status === 'success') {
+                        $('#nextBowlerModal').modal('hide');
+                        updateScoreDisplay(response);
+                    }
+                }
+            });
+        }
+    });
+
+    // Handle complete innings button
+    $('#innings-btn').click(function() {
+        if (confirm('Are you sure you want to complete this innings?')) {
+            $.ajax({
+                url: "{% url 'update_score' match.id %}",
+                type: "POST",
+                data: {
+                    'action': 'complete_innings',
+                    'csrfmiddlewaretoken': $('input[name=csrfmiddlewaretoken]').val()
+                },
+                success: function(response) {
+                    if (response.status === 'success') {
+                        if (response.new_innings) {
+                            // Reload the page to show new innings setup
+                            location.reload();
+                        }
+                    }
+                }
+            });
+        }
+    });
+
+    // Handle complete match button
+    $('#complete-btn').click(function() {
+        if (confirm('Are you sure you want to complete this match?')) {
+            $.ajax({
+                url: "{% url 'update_score' match.id %}",
+                type: "POST",
+                data: {
+                    'action': 'complete_match',
+                    'csrfmiddlewaretoken': $('input[name=csrfmiddlewaretoken]').val()
+                },
+                success: function(response) {
+                    if (response.status === 'success') {
+                        // Populate MOTM dropdown
+                        $('#motm').empty();
+                        $.each(response.all_players, function(i, player) {
+                            $('#motm').append($('<option>', {
+                                value: player.id,
+                                text: player.name + ' (' + player.team + ')'
+                            }));
+                        });
+                        $('#motmModal').modal('show');
+                    }
+                }
+            });
+        }
+    });
+
+    // Confirm MOTM selection
+    $('#confirm-motm').click(function() {
+        const motmId = $('#motm').val();
+        if (motmId) {
+            $.ajax({
+                url: "{% url 'update_score' match.id %}",
+                type: "POST",
+                data: {
+                    'action': 'set_motm',
+                    'motm_id': motmId,
+                    'csrfmiddlewaretoken': $('input[name=csrfmiddlewaretoken]').val()
+                },
+                success: function(response) {
+                    if (response.status === 'success') {
+                        $('#motmModal').modal('hide');
+                        window.location.href = "{% url 'match_detail' match.id %}";
+                    }
+                }
+            });
+        }
+    });
+
+    // Function to update score display
+    function updateScoreDisplay(data) {
+        if (data.total_runs !== undefined) {
+            $('#total-runs').text(data.total_runs);
+        }
+        if (data.total_wickets !== undefined) {
+            $('#total-wickets').text(data.total_wickets);
+        }
+        if (data.current_over !== undefined) {
+            $('#current-over').text(data.current_over);
+        }
+        if (data.striker_name !== undefined) {
+            $('#striker-name').text(data.striker_name);
+            $('#striker-runs').text(data.striker_runs);
+            $('#striker-balls').text('[' + data.striker_balls + ']');
+            $('#striker-fours').text(data.striker_fours);
+            $('#striker-sixes').text(data.striker_sixes);
+        }
+        if (data.non_striker_name !== undefined) {
+            $('#non-striker-name').text(data.non_striker_name);
+            $('#non-striker-runs').text(data.non_striker_runs);
+            $('#non-striker-balls').text('[' + data.non_striker_balls + ']');
+            $('#non-striker-fours').text(data.non_striker_fours);
+            $('#non-striker-sixes').text(data.non_striker_sixes);
+        }
+        if (data.bowler_name !== undefined) {
+            $('#bowler-name').text(data.bowler_name);
+            $('#bowler-stats').text(data.bowler_runs + '/' + data.bowler_wickets);
+            $('#bowler-overs').text('[' + data.bowler_overs + ']');
+        }
+        
+        // Refresh the scorecard tables
+        $.get("{% url 'match_performances' match.id %}", function(data) {
+            $('#batting-body').html(data.batting_html);
+            $('#bowling-body').html(data.bowling_html);
+        });
+    }
+
+    // Auto-refresh every 5 seconds
+    setInterval(function() {
+        $.get("{% url 'live_match_data' match.id %}", function(data) {
+            updateScoreDisplay(data);
+        });
+    }, 3000);
+});
+</script>
+{% endblock %}

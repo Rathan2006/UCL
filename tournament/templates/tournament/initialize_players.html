@@ -1,0 +1,41 @@
+{% extends 'tournament/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h3>Initialize Match Players</h3>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Striker</label>
+                    <select name="striker" class="form-select" required>
+                        {% for player in batting_players %}
+                        <option value="{{ player.id }}">{{ player.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Non-Striker</label>
+                    <select name="non_striker" class="form-select" required>
+                        {% for player in batting_players %}
+                        <option value="{{ player.id }}">{{ player.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Bowler</label>
+                    <select name="bowler" class="form-select" required>
+                        {% for player in bowling_players %}
+                        <option value="{{ player.id }}">{{ player.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Start Match</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

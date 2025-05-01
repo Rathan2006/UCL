@@ -1,0 +1,24 @@
+{% extends 'tournament/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h3>{{ title }}</h3>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="list-group">
+                    {% for player in players %}
+                    <button type="submit" name="player_id" value="{{ player.id }}" 
+                            class="list-group-item list-group-item-action">
+                        {{ player.name }} ({{ player.role }})
+                    </button>
+                    {% endfor %}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

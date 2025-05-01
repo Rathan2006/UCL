@@ -1,0 +1,39 @@
+{% extends 'tournament/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h2>Set Match Live: {{ match.home_team }} vs {{ match.away_team }}</h2>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.toss_winner.id_for_label }}">Toss Winner</label>
+                            {{ form.toss_winner }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.toss_decision.id_for_label }}">Decision</label>
+                            {{ form.toss_decision }}
+                        </div>
+                    </div>
+                </div>
+                <div class="text-center mt-4">
+                    <button type="submit" class="btn btn-success btn-lg">
+                        <i class="fas fa-play"></i> Start Match
+                    </button>
+                    <a href="{% url 'match_detail' match.id %}" class="btn btn-secondary btn-lg">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

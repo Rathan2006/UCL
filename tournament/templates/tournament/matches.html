@@ -7,25 +7,37 @@
 {% block content %}
 <div class="container py-3">
     <div class="card shadow-sm mb-4">
-        <div class="card-header bg-primary text-white">
-            <ul class="nav nav-tabs card-header-tabs">
+        <div class="card-header bg-primary text-white p-0">
+            <ul class="nav nav-tabs card-header-tabs m-0">
                 <li class="nav-item">
-                    <a class="nav-link {% if not past %}active{% endif %}" href="?past=0">Upcoming Matches</a>
+                    <a class="nav-link {% if not past %}active{% endif %} py-3 px-4" href="?past=0">
+                        <i class="bi bi-calendar3 me-2"></i>Upcoming Matches
+                    </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {% if past %}active{% endif %}" href="?past=1">Match History</a>
+                    <a class="nav-link {% if past %}active{% endif %} py-3 px-4" href="?past=1">
+                        <i class="bi bi-clock-history me-2"></i>Match History
+                    </a>
                 </li>
             </ul>
         </div>
         <div class="card-body">
-
             {% if past %}
-                <h3 class="mb-4 text-primary fw-bold">Match History</h3>
+                <h3 class="mb-4 text-primary fw-bold"><i class="bi bi-clock-history me-2"></i>Match History</h3>
                 {% if past_matches %}
                     <div class="row g-3">
                         {% for match in past_matches %}
                             <div class="col-12">
-                                <div class="match-card p-3 rounded shadow-sm bg-white">
+                                <div class="match-card p-3 rounded shadow-sm bg-white position-relative">
+                                    {% if match.winner %}
+                                        <span class="badge bg-success position-absolute top-0 end-0 m-2">
+                                            {{ match.winner.short_name|default:match.winner.name }} won
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary position-absolute top-0 end-0 m-2">
+                                            Match drawn
+                                        </span>
+                                    {% endif %}
                                     <div class="d-flex justify-content-between align-items-center mb-2">
                                         <div class="text-primary fw-bold">MATCH {{ match.match_number }}</div>
                                         <div class="text-muted small">
@@ -50,6 +62,11 @@
                                             </div>
                                         </div>
                                     </a>
+                                    {% if match.man_of_the_match %}
+                                        <div class="mt-2 text-end small text-muted">
+                                            <i class="bi bi-star-fill text-warning"></i> MOTM: {{ match.man_of_the_match.name }}
+                                        </div>
+                                    {% endif %}
                                 </div>
                             </div>
                         {% endfor %}
@@ -60,12 +77,17 @@
                     </div>
                 {% endif %}
             {% else %}
-                <h3 class="mb-4 text-primary fw-bold">Upcoming Matches</h3>
+                <h3 class="mb-4 text-primary fw-bold"><i class="bi bi-calendar3 me-2"></i>Upcoming Matches</h3>
                 {% if upcoming_matches %}
                     <div class="row g-3">
                         {% for match in upcoming_matches %}
                             <div class="col-12">
-                                <div class="match-card p-3 rounded shadow-sm bg-white">
+                                <div class="match-card p-3 rounded shadow-sm bg-white position-relative">
+                                    {% if match.is_live %}
+                                        <span class="badge bg-danger position-absolute top-0 end-0 m-2">
+                                            <i class="bi bi-circle-fill me-1"></i>LIVE
+                                        </span>
+                                    {% endif %}
                                     <div class="d-flex justify-content-between align-items-center mb-2">
                                         <div class="text-primary fw-bold">MATCH {{ match.match_number }}</div>
                                         <div class="text-muted small">
@@ -100,7 +122,6 @@
                     </div>
                 {% endif %}
             {% endif %}
-
         </div>
     </div>
 </div>
@@ -108,6 +129,61 @@
 
 {% block styles %}
 <style>
+    /* Tab Styling */
+    .card-header-tabs {
+        border-bottom: none;
+        display: flex;
+    }
+    
+    .card-header-tabs .nav-item {
+        flex: 1;
+        text-align: center;
+    }
+    
+    .card-header-tabs .nav-link {
+        color: rgba(255, 255, 255, 0.8);
+        border: none;
+        border-radius: 0;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        position: relative;
+        padding: 1rem;
+    }
+    
+    .card-header-tabs .nav-link:hover {
+        color: white;
+        background-color: rgba(255, 255, 255, 0.15);
+    }
+    
+    .card-header-tabs .nav-link.active {
+        color: white;
+        background-color: rgba(255, 255, 255, 0.25);
+        font-weight: 600;
+    }
+    
+    .card-header-tabs .nav-link.active::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background-color: white;
+    }
+
+    /* Match card styling */
+    .match-card {
+        background-color: #f8f9fa;
+        transition: all 0.3s ease;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .match-card:hover {
+        background-color: rgba(13, 110, 253, 0.07);
+        transform: translateY(-3px);
+        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.15);
+    }
+    
     .logo-container {
         width: 50px;
         height: 50px;
@@ -120,57 +196,62 @@
         justify-content: center;
         transition: transform 0.3s ease;
     }
-
+    
     .team-logo {
         width: 40px;
         height: 40px;
         object-fit: cover;
         border-radius: 50%;
     }
-
-    .team-info {
-        display: flex;
-        align-items: center;
-    }
-
+    
     .vs-text {
         font-size: 1.1rem;
         font-weight: bold;
         color: #343a40;
     }
-
-    .team-logo:hover {
-        transform: scale(1.1);
-    }
-
-    .match-card {
-        background-color: #f8f9fa;
-        transition: all 0.3s ease;
-    }
-
-    .match-card:hover {
-        background-color: rgba(13, 110, 253, 0.07);
-        transform: translateY(-3px);
-        box-shadow: 0 4px 10px rgba(13, 110, 253, 0.1);
-    }
-
+    
     .badge {
         font-weight: 500;
-        font-size: 0.9rem;
-        padding: 6px 12px;
+        font-size: 0.8rem;
+        padding: 4px 8px;
     }
 
-    @media (max-width: 576px) {
+    /* Responsive adjustments */
+    @media (max-width: 767.98px) {
+        .card-header-tabs .nav-link {
+            padding: 0.75rem 0.5rem;
+            font-size: 0.9rem;
+        }
+        
         .logo-container {
             width: 40px;
             height: 40px;
         }
+        
         .team-logo {
-            width: 30px;
-            height: 30px;
+            width: 32px;
+            height: 32px;
         }
-        .vs-text {
-            font-size: 1rem;
+    }
+
+    @media (max-width: 575.98px) {
+        .card-header-tabs .nav-link {
+            padding: 0.75rem 0.25rem;
+            font-size: 0.8rem;
+        }
+        
+        .card-header-tabs .nav-link i {
+            display: none;
+        }
+        
+        .logo-container {
+            width: 36px;
+            height: 36px;
+        }
+        
+        .team-logo {
+            width: 28px;
+            height: 28px;
         }
     }
 </style>
